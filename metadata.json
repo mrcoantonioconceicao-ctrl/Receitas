@@ -1,0 +1,6 @@
+{
+  "name": "DoughCraft - Assistente Inteligente de Pães e Bolos Caseiros",
+  "description": "Seu assistente culinário amigável para pães e bolos caseiros. Traduz a ciência das massas em receitas práticas, fáceis e deliciosas com quantidades exatas em gramas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
