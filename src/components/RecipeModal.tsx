@@ -129,7 +129,18 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                       {item.baseFlourWeight}g Farinha
                     </span>
                     <span className="flex items-center gap-1 text-emerald-400">
-                      Rende {item.targetUnits} {item.targetUnits === 1 ? 'bolo/pão' : 'pães médios'}
+                      Rende {item.targetUnits}{' '}
+                      {item.name.toLowerCase().includes('cuca')
+                        ? item.targetUnits === 1
+                          ? 'cuca grande'
+                          : 'cucas'
+                        : item.type === 'cake'
+                        ? item.targetUnits === 1
+                          ? 'bolo'
+                          : 'bolos'
+                        : item.targetUnits === 1
+                        ? 'pão médio'
+                        : 'pães médios'}
                     </span>
                   </div>
                 </div>

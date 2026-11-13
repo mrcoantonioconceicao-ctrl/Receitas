@@ -1,4 +1,4 @@
-import { ClimateSettings, CostingSettings, Ingredient } from '../types';
+import { ClimateSettings, CostingSettings, Ingredient, Recipe } from '../types';
 
 export interface HydrationAnalysis {
   formulaWaterWeight: number;
@@ -50,8 +50,11 @@ export function calculateHydrationMetrics(
   let flourFromPreferment = 0;
   let liquidFromPreferment = 0;
 
+  let directFlourWeight = 0;
+
   ingredients.forEach((ing) => {
     if (ing.isFlour) {
+      directFlourWeight += ing.weight;
       totalFlourWeight += ing.weight;
     }
 
@@ -76,8 +79,11 @@ export function calculateHydrationMetrics(
     }
   });
 
-  const formulaHydrationPct = baseFlourWeight > 0 ? (formulaWaterWeight / baseFlourWeight) * 100 : 0;
-  const trueGlobalHydrationPct = totalFlourWeight > 0 ? (totalLiquidWeight / totalFlourWeight) * 100 : 0;
+  const effectiveBaseFlour = directFlourWeight > 0 ? directFlourWeight : baseFlourWeight;
+  const effectiveTotalFlour = totalFlourWeight > 0 ? totalFlourWeight : effectiveBaseFlour;
+
+  const formulaHydrationPct = effectiveBaseFlour > 0 ? (formulaWaterWeight / effectiveBaseFlour) * 100 : 0;
+  const trueGlobalHydrationPct = effectiveTotalFlour > 0 ? (totalLiquidWeight / effectiveTotalFlour) * 100 : 0;
 
   return {
     formulaWaterWeight,
@@ -127,9 +133,8 @@ export function calculateDDT(
 
   if (needsIce && totalWaterWeight > 0) {
     if (waterTempTarget < 0) {
-      // Very high friction or hot ambient: water alone cannot reach DDT
-      warningMessage = `Alerta Térmico: A temperatura teórica calculada da água (${waterTempTarget.toFixed(1)}°C) é abaixo de zero! Refrigere a farinha para 10-15°C ou coloque a tigela/gancho no freezer antes da sova.`;
-      // Use 100% ice or near 100% ice
+      // Dia muito quente ou sova forte: explique em linguagem simples de cozinha
+      warningMessage = `Hoje está bem calor! Para a massa não esquentar demais, use água bem geladinha da geladeira (e até umas pedrinhas de gelo) ou deixe a tigela uns minutinhos na geladeira antes de começar.`;
       iceWeight = Math.min(totalWaterWeight * 0.85, totalWaterWeight);
       liquidWaterWeight = totalWaterWeight - iceWeight;
     } else {
@@ -263,6 +268,200 @@ export function scaleRecipeByTotalDoughWeight(
 };
 
 /**
+ * Recalculates baseFlourWeight from the sum of flour ingredients (isFlour === true)
+ * and keeps every ingredient's percentage mathematically exact relative to total flour (100%).
+ */
+export function syncFloursAndPercentages(
+  ingredients: Ingredient[],
+  fallbackBaseFlour: number
+): { ingredients: Ingredient[]; baseFlourWeight: number } {
+  const flourSum = ingredients
+    .filter((i) => i.isFlour)
+    .reduce((sum, i) => sum + (i.weight || 0), 0);
+
+  const baseFlourWeight = flourSum > 0 ? Math.round(flourSum * 10) / 10 : fallbackBaseFlour;
+
+  const synced = ingredients.map((ing) => ({
+    ...ing,
+    percentage: baseFlourWeight > 0
+      ? Math.round(((ing.weight / baseFlourWeight) * 100) * 10) / 10
+      : 0,
+  }));
+
+  return { ingredients: synced, baseFlourWeight };
+}
+
+/**
+ * Calculates a coherent, realistic domestic yield (number of loaves/cakes/rolls)
+ * so recipes never show absurd tiny 2g units or unrealistic counts.
+ * Example: ~1700g-1800g bread dough -> 2 medium/large home loaves of ~850g-900g each.
+ */
+export function calculateCoherentTargetUnits(
+  recipeType: 'bread' | 'pastry' | 'cake',
+  totalRawWeight: number,
+  currentUnits?: number,
+  previousRawWeight?: number
+): number {
+  if (totalRawWeight <= 0) return Math.max(1, currentUnits || 1);
+
+  if (recipeType === 'cake') {
+    return totalRawWeight > 1900 ? Math.max(1, Math.round(totalRawWeight / 1350)) : 1;
+  }
+
+  // Small dinner rolls / pastries (e.g. Pão de Minuto: ~45g-110g per roll)
+  if (currentUnits && currentUnits >= 6 && previousRawWeight && previousRawWeight > 0) {
+    const prevPerUnit = previousRawWeight / currentUnits;
+    if (prevPerUnit >= 35 && prevPerUnit <= 150) {
+      return Math.max(1, Math.round(totalRawWeight / prevPerUnit));
+    }
+  }
+
+  // Standard home loaves: keep realistic loaf weights (~380g to ~950g raw dough per loaf)
+  if (totalRawWeight <= 580) {
+    return 1;
+  }
+  if (totalRawWeight <= 1900) {
+    return 2; // 880g -> 2 loaves of ~440g; 1700g-1800g -> 2 loaves of ~850g-900g
+  }
+  return Math.max(2, Math.round(totalRawWeight / 850));
+}
+
+/**
+ * Normalizes an AI-generated quick-formulate response so that:
+ * - baseFlourWeight is strictly 500g (or data.baseFlourWeight if valid)
+ * - Every ingredient weight & percentage is scaled consistently with zero 2x mismatch
+ * - targetBakedWeightPerUnit matches raw batch weight and bakeLossPercentage
+ */
+export function normalizeQuickRecipe(
+  data: any,
+  fallbackName: string,
+  defaultBaseFlour = 500
+): Recipe {
+  const targetBaseFlour =
+    typeof data?.baseFlourWeight === 'number' && data.baseFlourWeight > 0
+      ? data.baseFlourWeight
+      : defaultBaseFlour;
+
+  const rawIngredients: Ingredient[] = (data?.ingredients || []).map((ing: any, idx: number) => ({
+    id: `ing-${Date.now()}-${idx}`,
+    name: ing.name || 'Ingrediente',
+    category: ing.category || 'other',
+    percentage: Number(ing.percentage) || 0,
+    weight: Number(ing.weight) || 0,
+    isFlour: Boolean(ing.isFlour || ing.category === 'flour'),
+    isPreferment: Boolean(ing.isPreferment),
+    prefermentHydration: ing.prefermentHydration,
+    costPerKg: Number(ing.costPerKg) || 5.0,
+    notes: ing.notes,
+  }));
+
+  // Ensure at least one flour ingredient exists if AI omitted isFlour
+  if (rawIngredients.length > 0 && !rawIngredients.some((i) => i.isFlour)) {
+    rawIngredients[0].isFlour = true;
+    rawIngredients[0].category = 'flour';
+  }
+
+  // Compute total flour weight returned by AI (or fallback from percentages)
+  const aiFlourWeightSum = rawIngredients
+    .filter((i) => i.isFlour)
+    .reduce((s, i) => s + i.weight, 0);
+
+  const aiFlourPctSum = rawIngredients
+    .filter((i) => i.isFlour)
+    .reduce((s, i) => s + i.percentage, 0);
+
+  let normalizedIngredients: Ingredient[];
+
+  if (aiFlourWeightSum > 0) {
+    // Scale proportionally from AI weights so sum of flours === targetBaseFlour
+    const scaleFactor = targetBaseFlour / aiFlourWeightSum;
+    normalizedIngredients = rawIngredients.map((ing) => {
+      const scaledWeight = Math.round(ing.weight * scaleFactor * 10) / 10;
+      const pct = Math.round(((scaledWeight / targetBaseFlour) * 100) * 10) / 10;
+      return {
+        ...ing,
+        weight: scaledWeight,
+        percentage: pct,
+      };
+    });
+  } else if (aiFlourPctSum > 0) {
+    // Derive weights directly from percentages normalized so flours sum to 100%
+    const pctScale = 100 / aiFlourPctSum;
+    normalizedIngredients = rawIngredients.map((ing) => {
+      const pct = Math.round(ing.percentage * pctScale * 10) / 10;
+      const weight = Math.round(((targetBaseFlour * pct) / 100) * 10) / 10;
+      return {
+        ...ing,
+        percentage: pct,
+        weight,
+      };
+    });
+  } else {
+    normalizedIngredients = rawIngredients;
+  }
+
+  const recipeType: 'bread' | 'pastry' | 'cake' =
+    data?.type || (fallbackName.toLowerCase().includes('bolo') ? 'cake' : 'bread');
+  const totalRawWeight = normalizedIngredients.reduce((s, i) => s + i.weight, 0);
+  const rawAiUnits = Number(data?.targetUnits) || 0;
+  const rawPerAiUnit = rawAiUnits > 0 && totalRawWeight > 0 ? totalRawWeight / rawAiUnits : 0;
+
+  // Accept AI unit count only if each piece has a coherent weight (>= 40g for rolls, >= 200g for regular bread/cake)
+  const minPieceWeight = recipeType === 'cake' ? 300 : rawAiUnits >= 6 ? 40 : 200;
+  const targetUnits =
+    rawAiUnits >= 1 && rawPerAiUnit >= minPieceWeight && rawPerAiUnit <= 1500
+      ? Math.round(rawAiUnits)
+      : calculateCoherentTargetUnits(recipeType, totalRawWeight);
+
+  const bakeLossPercentage = Number(data?.costing?.bakeLossPercentage) || 12;
+  const computedBakedUnitWeight =
+    totalRawWeight > 0
+      ? Math.round((totalRawWeight * (1 - bakeLossPercentage / 100)) / targetUnits)
+      : Number(data?.targetBakedWeightPerUnit) || 389;
+
+  return {
+    id: `smart-${Date.now()}`,
+    name: data?.name || fallbackName,
+    type: data?.type || (fallbackName.toLowerCase().includes('bolo') ? 'cake' : 'bread'),
+    category: data?.category || 'Receita Tradicional de Vó',
+    description:
+      data?.description ||
+      `Receita caseira simples e deliciosa feita com ${targetBaseFlour}g de farinha, rendendo ${targetUnits} ${targetUnits === 1 ? 'unidade' : 'pães médios'}.`,
+    baseFlourWeight: targetBaseFlour,
+    targetUnits,
+    targetBakedWeightPerUnit: computedBakedUnitWeight,
+    ingredients: normalizedIngredients,
+    climate: {
+      roomTemp: data?.climate?.roomTemp ?? 24,
+      flourTemp: data?.climate?.flourTemp ?? 22,
+      desiredDoughTemp: data?.climate?.desiredDoughTemp ?? 26,
+      prefermentTemp: data?.climate?.prefermentTemp ?? 22,
+      hasPreferment: false,
+      relativeHumidity: data?.climate?.relativeHumidity ?? 60,
+      mixerType: 'manual',
+      frictionFactor: 2,
+      tapWaterTemp: data?.climate?.tapWaterTemp ?? 22,
+    },
+    costing: {
+      bakeLossPercentage,
+      packagingCostPerUnit: data?.costing?.packagingCostPerUnit ?? 0.5,
+      energyGasCostPerBatch: data?.costing?.energyGasCostPerBatch ?? 3.5,
+      laborOverheadPercentage: data?.costing?.laborOverheadPercentage ?? 15,
+      markupMultiplier: data?.costing?.markupMultiplier ?? 3.0,
+      targetMarginPercent: data?.costing?.targetMarginPercent ?? 65,
+    },
+    steps: (data?.steps || []).map((st: any, idx: number) => ({
+      id: `step-${Date.now()}-${idx}`,
+      name: st.name,
+      durationMinutes: st.durationMinutes ?? 15,
+      temperature: st.temperature,
+      description: st.description,
+      criticalControlPoint: st.criticalControlPoint ?? 'Dica de vó.',
+    })),
+  };
+}
+
+/**
  * Tangzhong / Yudane Scald Calculator
  */
 export function calculateTangzhong(
@@ -337,9 +536,11 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
 
   // Fermento químico em pó (bolo)
   if (lowerName.includes('químico') || lowerName.includes('quimico') || (category === 'ferment' && lowerName.includes('pó'))) {
-    if (Math.abs(weight - 15) <= 2) return '1 colher de sopa cheia (ou a própria tampa)';
-    if (Math.abs(weight - 10) <= 1) return '1 colher de sopa rasa';
-    if (Math.abs(weight - 5) <= 1) return '1 colher de chá';
+    if (Math.abs(weight - 15) <= 3) return '1 colher de sopa cheia (ou a própria tampa)';
+    if (Math.abs(weight - 10) <= 1.5) return '1 colher de sopa rasa';
+    if (Math.abs(weight - 5) <= 1.5) return '1 colher de chá';
+    const spoons = (weight / 15).toFixed(1).replace('.', ',');
+    return `~${spoons} colheres de sopa cheias (tampas)`;
   }
 
   // Sal
@@ -348,26 +549,26 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
     if (weight <= 6) return '1 colher de chá rasa';
     if (weight <= 10) return '1 colher de sobremesa rasa';
     if (weight <= 15) return '1 colher de sopa rasa';
-    const spoons = (weight / 15).toFixed(1);
+    const spoons = (weight / 15).toFixed(1).replace('.', ',');
     return `~${spoons} colheres de sopa`;
   }
 
-  // Açúcar
+  // Açúcar (1 xícara padrão = 200g)
   if (category === 'sugar' || lowerName.includes('açúcar') || lowerName.includes('acucar')) {
-    if (weight < 25) {
+    if (weight < 35) {
       const spoons = Math.max(1, Math.round(weight / 15));
       return `~${spoons} colher${spoons > 1 ? 'es' : ''} de sopa`;
     }
-    const cups = (weight / 180);
-    if (Math.abs(cups - 1) < 0.15) return '~1 xícara de chá';
+    const cups = weight / 200;
+    if (Math.abs(cups - 1) < 0.15) return '~1 xícara de chá cheia';
     if (Math.abs(cups - 0.5) < 0.1) return '~meia xícara de chá';
-    if (Math.abs(cups - 0.25) < 0.1) return '~1/4 de xícara de chá (ou 2 colheres de sopa cheias)';
+    if (Math.abs(cups - 0.25) < 0.1) return '~1/4 de xícara de chá (ou 3 colheres de sopa)';
     if (Math.abs(cups - 1.5) < 0.15) return '~1 xícara e meia de chá';
     if (Math.abs(cups - 2) < 0.15) return '~2 xícaras de chá';
-    return `~${cups.toFixed(1)} xícaras de chá`;
+    return `~${cups.toFixed(1).replace('.', ',')} xícaras de chá`;
   }
 
-  // Farinha de trigo / Fubá / Amido
+  // Farinha de trigo / Fubá / Amido (1 xícara = 125g)
   if (category === 'flour' || lowerName.includes('farinha') || lowerName.includes('fubá') || lowerName.includes('fuba')) {
     const cups = weight / 125;
     if (Math.abs(weight - 500) < 15) return '~4 xícaras de chá (bem niveladas)';
@@ -377,10 +578,10 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
     if (Math.abs(cups - 0.5) < 0.1) return '~meia xícara de chá';
     if (Math.abs(cups - 1.5) < 0.15) return '~1 xícara e meia de chá';
     if (Math.abs(cups - 3) < 0.15) return '~3 xícaras de chá';
-    return `~${cups.toFixed(1)} xícaras de chá`;
+    return `~${cups.toFixed(1).replace('.', ',')} xícaras de chá`;
   }
 
-  // Líquidos (Água / Leite)
+  // Líquidos (Água / Leite — 1 xícara = 240ml)
   if (category === 'liquid' || lowerName.includes('água') || lowerName.includes('agua') || lowerName.includes('leite')) {
     if (Math.abs(weight - 300) < 15) return '~1 xícara e 1/4 (ou 1 copo e meio americano)';
     if (Math.abs(weight - 240) < 15) return '~1 xícara de chá cheia (240ml)';
@@ -388,17 +589,18 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
     if (Math.abs(weight - 120) < 10) return '~meia xícara de chá';
     if (Math.abs(weight - 500) < 20) return '~2 xícaras cheias (500ml)';
     const cups = weight / 240;
-    return `~${cups.toFixed(1)} xícara${cups > 1 ? 's' : ''} de chá`;
+    return `~${cups.toFixed(1).replace('.', ',')} xícara${cups >= 1.5 ? 's' : ''} de chá`;
   }
 
-  // Gorduras (Óleo / Manteiga / Banha)
+  // Gorduras (Óleo / Manteiga / Banha — 1 xícara óleo = 220g, 1 colher sopa = 15g)
   if (category === 'fat' || lowerName.includes('óleo') || lowerName.includes('oleo') || lowerName.includes('manteiga') || lowerName.includes('banha')) {
-    if (weight <= 15) return '~1 colher de sopa rasa';
-    if (weight <= 30) return '~2 colheres de sopa cheias';
-    if (Math.abs(weight - 40) <= 8) return '~3 colheres de sopa cheias (ou 1/4 de xícara)';
-    if (Math.abs(weight - 50) <= 8) return '~1/4 de xícara (ou 3 colheres de sopa bem cheias)';
-    if (Math.abs(weight - 100) <= 10) return '~meia xícara de chá';
-    const spoons = (weight / 15).toFixed(1);
+    if (weight <= 18) return '~1 colher de sopa';
+    if (weight <= 34) return '~2 colheres de sopa cheias';
+    if (Math.abs(weight - 40) <= 7) return '~3 colheres de sopa cheias (ou 1/4 de xícara)';
+    if (Math.abs(weight - 55) <= 8) return '~1/4 de xícara (ou 3 a 4 colheres de sopa)';
+    if (Math.abs(weight - 110) <= 12) return '~meia xícara de chá';
+    if (Math.abs(weight - 220) <= 15) return '~1 xícara de chá cheia';
+    const spoons = (weight / 15).toFixed(1).replace('.', ',');
     return `~${spoons} colheres de sopa`;
   }
 
@@ -408,8 +610,37 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
     return `~${eggs} ovo${eggs > 1 ? 's' : ''} médio${eggs > 1 ? 's' : ''}`;
   }
 
+  // Frutas (Uva e Banana para Cuca)
+  if (lowerName.includes('uva') && lowerName.includes('banana')) {
+    const cups = (weight / 175).toFixed(1).replace('.', ',');
+    const bananas = Math.max(1, Math.round(weight / 110));
+    return `~${cups} xícaras de uvas ou ${bananas} bananas médias`;
+  }
+  if (lowerName.includes('uva')) {
+    const cups = (weight / 175).toFixed(1).replace('.', ',');
+    return `~${cups.replace(',0', '')} xícara${weight >= 260 ? 's' : ''} de chá bem cheia${weight >= 260 ? 's' : ''}`;
+  }
+  if (lowerName.includes('banana')) {
+    const bananas = Math.max(1, Math.round(weight / 110));
+    return `~${bananas} banana${bananas > 1 ? 's' : ''} média${bananas > 1 ? 's' : ''} fatiada${bananas > 1 ? 's' : ''}`;
+  }
+
+  // Canela em pó / Erva-doce
+  if (lowerName.includes('canela') || lowerName.includes('erva-doce') || lowerName.includes('erva doce')) {
+    if (weight <= 6) return '~1 colher de chá cheia';
+    if (weight <= 15) return '~1 colher de sopa';
+    return `~${Math.round(weight / 15)} colheres de sopa`;
+  }
+
+  // Queijo Parmesão / Coco Ralado
+  if (lowerName.includes('queijo') || lowerName.includes('parmes') || lowerName.includes('coco')) {
+    if (Math.abs(weight - 50) <= 10) return '1 pacotinho (50g) ou ~meia xícara';
+    if (Math.abs(weight - 100) <= 15) return '~1 xícara de chá';
+    return `~${(weight / 80).toFixed(1).replace('.', ',')} xícara(s)`;
+  }
+
   // Genérico
   if (weight < 20) return `~${Math.max(1, Math.round(weight / 5))} colher(es) de chá`;
   if (weight < 100) return `~${Math.max(1, Math.round(weight / 15))} colher(es) de sopa`;
-  return `~${(weight / 150).toFixed(1)} xícara(s)`;
+  return `~${(weight / 150).toFixed(1).replace('.', ',')} xícara(s)`;
 }

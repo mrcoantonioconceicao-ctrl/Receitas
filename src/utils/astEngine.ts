@@ -1,65 +1,68 @@
-import { 
-  Recipe, 
-  RecipeASTNode, 
-  ASTNodeType, 
-  EvaluatedAST, 
-  ClimateSettings, 
-  CostingSettings, 
-  Ingredient 
+import {
+  Recipe,
+  RecipeASTNode,
+  EvaluatedAST,
+  ClimateSettings,
+  CostingSettings,
 } from '../types';
-import { calculateDDT, calculateCosting } from './bakersMath';
+import { calculateDDT } from './bakersMath';
 
 /**
- * Builds a deterministic Abstract Syntax Tree (AST) from a recipe.
- * The primary flour acts as the ROOT NODE (100% / 1000g base).
+ * Organizes a recipe into clean ingredient groups without altering weights.
+ * The sum of all flour ingredients acts as the 100% reference base.
  */
 export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
-  const baseFlourWeight = recipe.baseFlourWeight || 1000;
-
-  // Identify root flour ingredients
   const flourIngredients = recipe.ingredients.filter((i) => i.isFlour);
+  const sumFlours = flourIngredients.reduce((sum, f) => sum + (f.weight || 0), 0);
+  const baseFlourWeight = sumFlours > 0 ? Math.round(sumFlours * 10) / 10 : recipe.baseFlourWeight || 500;
+
   const primaryFlour = flourIngredients[0] || {
     id: 'flour-root',
-    name: 'Farinha Base Principal (W 280-320)',
-    category: 'flour',
+    name: 'Farinha de Trigo Comum',
+    category: 'flour' as const,
     percentage: 100,
     weight: baseFlourWeight,
     isFlour: true,
-    costPerKg: 7.0,
+    costPerKg: 4.5,
   };
 
-  // Create Root Node
+  const totalFlourCost =
+    flourIngredients.length > 0
+      ? flourIngredients.reduce((sum, f) => sum + (f.weight / 1000) * (f.costPerKg || 0), 0)
+      : (baseFlourWeight / 1000) * (primaryFlour.costPerKg || 0);
+  const effectiveFlourCostPerKg = baseFlourWeight > 0 ? (totalFlourCost * 1000) / baseFlourWeight : 0;
+
+  const isBlend = flourIngredients.length > 1;
+
   const rootNode: RecipeASTNode = {
     id: `ast-root-${primaryFlour.id}`,
     type: 'ROOT_FLOUR',
-    name: primaryFlour.name,
+    name: isBlend ? 'Farinhas da Receita (Mistura)' : primaryFlour.name,
     percentage: 100,
     weight: baseFlourWeight,
-    costPerKg: primaryFlour.costPerKg || 7.0,
+    costPerKg: Math.round(effectiveFlourCostPerKg * 100) / 100,
     isRootFlour: true,
     children: [],
     metadata: {
       flourContribution: baseFlourWeight,
       hydrationContribution: 0,
-      notes: 'Nó Raiz da AST: Farinha Base Determinística (100%)',
+      notes: 'Base principal de farinha da receita',
     },
   };
 
-  // Branch 1: Additional Flours (if blend)
-  const secondaryFlours = flourIngredients.slice(1);
-  if (secondaryFlours.length > 0) {
+  if (isBlend) {
     const blendBranch: RecipeASTNode = {
       id: 'ast-branch-flour-blend',
       type: 'ROOT_FLOUR',
-      name: 'Blend de Farinhas Secundárias',
-      percentage: secondaryFlours.reduce((sum, f) => sum + f.percentage, 0),
-      weight: secondaryFlours.reduce((sum, f) => sum + f.weight, 0),
-      costPerKg: 8.5,
-      children: secondaryFlours.map((f) => ({
-        id: `ast-leaf-${f.id}`,
+      name: 'Farinhas usadas na mistura',
+      percentage: 100,
+      weight: baseFlourWeight,
+      costPerKg: Math.round(effectiveFlourCostPerKg * 100) / 100,
+      children: flourIngredients.map((f) => ({
+        id: `ast-flour-leaf-${f.id}`,
         type: 'LEAF_INGREDIENT',
         name: f.name,
-        percentage: f.percentage,
+        percentage: baseFlourWeight > 0 ? Math.round(((f.weight / baseFlourWeight) * 100) * 10) / 10 : f.percentage,
         weight: f.weight,
         costPerKg: f.costPerKg,
         metadata: { flourContribution: f.weight },
@@ -68,7 +71,7 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
     rootNode.children!.push(blendBranch);
   }
 
-  // Branch 2: Preferments (Subtree with Flour + Water decomposition)
+  // Esponjas / misturas prévias (caso o usuário adicione manualmente)
   const preferments = recipe.ingredients.filter((i) => i.isPreferment);
   if (preferments.length > 0) {
     preferments.forEach((pref) => {
@@ -79,7 +82,7 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
       const prefermentSubtree: RecipeASTNode = {
         id: `ast-subtree-pref-${pref.id}`,
         type: 'SUBTREE_PREFERMENT',
-        name: `${pref.name} (${hydr}% Hidr.)`,
+        name: pref.name,
         percentage: pref.percentage,
         weight: pref.weight,
         costPerKg: pref.costPerKg,
@@ -87,8 +90,8 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
           {
             id: `pref-sub-flour-${pref.id}`,
             type: 'LEAF_INGREDIENT',
-            name: `Farinha fermentada no levain (${(flourPart / baseFlourWeight * 100).toFixed(1)}%)`,
-            percentage: (flourPart / baseFlourWeight) * 100,
+            name: 'Farinha na mistura prévia',
+            percentage: Math.round(((flourPart / baseFlourWeight) * 100) * 10) / 10,
             weight: Math.round(flourPart * 10) / 10,
             costPerKg: pref.costPerKg,
             metadata: { flourContribution: flourPart },
@@ -96,8 +99,8 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
           {
             id: `pref-sub-water-${pref.id}`,
             type: 'LEAF_INGREDIENT',
-            name: `Água líquida no levain (${(waterPart / baseFlourWeight * 100).toFixed(1)}%)`,
-            percentage: (waterPart / baseFlourWeight) * 100,
+            name: 'Água na mistura prévia',
+            percentage: Math.round(((waterPart / baseFlourWeight) * 100) * 10) / 10,
             weight: Math.round(waterPart * 10) / 10,
             costPerKg: 0.05,
             metadata: { hydrationContribution: waterPart },
@@ -114,16 +117,19 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
     });
   }
 
-  // Branch 3: Hydration / Liquids
-  const liquids = recipe.ingredients.filter((i) => i.category === 'liquid' && !i.isPreferment);
+  // Líquidos
+  const liquids = recipe.ingredients.filter(
+    (i) => !i.isFlour && !i.isPreferment && i.category === 'liquid'
+  );
   if (liquids.length > 0) {
+    const liquidWeightSum = liquids.reduce((sum, l) => sum + l.weight, 0);
     const liquidBranch: RecipeASTNode = {
       id: 'ast-branch-liquid',
       type: 'BRANCH_LIQUID',
-      name: 'Ramo Hidro-Dinâmico (Líquidos Diretos)',
+      name: 'Água, Leite e Líquidos',
       percentage: liquids.reduce((sum, l) => sum + l.percentage, 0),
-      weight: liquids.reduce((sum, l) => sum + l.weight, 0),
-      costPerKg: 0.1,
+      weight: liquidWeightSum,
+      costPerKg: 0,
       children: liquids.map((l) => ({
         id: `ast-leaf-${l.id}`,
         type: 'LEAF_INGREDIENT',
@@ -133,21 +139,21 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
         costPerKg: l.costPerKg,
         metadata: { hydrationContribution: l.weight },
       })),
-      metadata: { hydrationContribution: liquids.reduce((sum, l) => sum + l.weight, 0) },
+      metadata: { hydrationContribution: liquidWeightSum },
     };
     rootNode.children!.push(liquidBranch);
   }
 
-  // Branch 4: Salt & Gluten Ionic Stabilization
-  const salts = recipe.ingredients.filter((i) => i.category === 'salt');
+  // Sal
+  const salts = recipe.ingredients.filter((i) => !i.isFlour && !i.isPreferment && i.category === 'salt');
   if (salts.length > 0) {
     const saltBranch: RecipeASTNode = {
       id: 'ast-branch-salt',
       type: 'BRANCH_SALT',
-      name: 'Ramo Iônico (Estabilização de Glúten & Salinidade)',
+      name: 'Sal (Tempero)',
       percentage: salts.reduce((sum, s) => sum + s.percentage, 0),
       weight: salts.reduce((sum, s) => sum + s.weight, 0),
-      costPerKg: 4.0,
+      costPerKg: 0,
       children: salts.map((s) => ({
         id: `ast-leaf-${s.id}`,
         type: 'LEAF_INGREDIENT',
@@ -160,16 +166,18 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
     rootNode.children!.push(saltBranch);
   }
 
-  // Branch 5: Commercial Ferments
-  const ferments = recipe.ingredients.filter((i) => i.category === 'ferment' && !i.isPreferment);
+  // Fermentos
+  const ferments = recipe.ingredients.filter(
+    (i) => !i.isFlour && !i.isPreferment && i.category === 'ferment'
+  );
   if (ferments.length > 0) {
     const fermentBranch: RecipeASTNode = {
       id: 'ast-branch-ferment',
       type: 'BRANCH_FERMENT',
-      name: 'Ramo de Cinética Levedante (Fermentos Comerciais)',
+      name: 'Fermento (Para Crescer)',
       percentage: ferments.reduce((sum, f) => sum + f.percentage, 0),
       weight: ferments.reduce((sum, f) => sum + f.weight, 0),
-      costPerKg: 25.0,
+      costPerKg: 0,
       children: ferments.map((f) => ({
         id: `ast-leaf-${f.id}`,
         type: 'LEAF_INGREDIENT',
@@ -182,16 +190,16 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
     rootNode.children!.push(fermentBranch);
   }
 
-  // Branch 6: Lipids & Fats
-  const fats = recipe.ingredients.filter((i) => i.category === 'fat');
+  // Gorduras
+  const fats = recipe.ingredients.filter((i) => !i.isFlour && !i.isPreferment && i.category === 'fat');
   if (fats.length > 0) {
     const fatBranch: RecipeASTNode = {
       id: 'ast-branch-lipid',
       type: 'BRANCH_LIPID',
-      name: 'Ramo Lipídico (Emulsões & Maciez)',
+      name: 'Óleo ou Manteiga (Maciez)',
       percentage: fats.reduce((sum, f) => sum + f.percentage, 0),
       weight: fats.reduce((sum, f) => sum + f.weight, 0),
-      costPerKg: 45.0,
+      costPerKg: 0,
       children: fats.map((f) => ({
         id: `ast-leaf-${f.id}`,
         type: 'LEAF_INGREDIENT',
@@ -204,16 +212,16 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
     rootNode.children!.push(fatBranch);
   }
 
-  // Branch 7: Sweeteners
-  const sugars = recipe.ingredients.filter((i) => i.category === 'sugar');
+  // Açúcares
+  const sugars = recipe.ingredients.filter((i) => !i.isFlour && !i.isPreferment && i.category === 'sugar');
   if (sugars.length > 0) {
     const sugarBranch: RecipeASTNode = {
       id: 'ast-branch-sweetener',
       type: 'BRANCH_SWEETENER',
-      name: 'Ramo Sacarídico (Alimento Levedante & Maillard)',
+      name: 'Açúcar (Sabor e Cor Dourada)',
       percentage: sugars.reduce((sum, s) => sum + s.percentage, 0),
       weight: sugars.reduce((sum, s) => sum + s.weight, 0),
-      costPerKg: 5.0,
+      costPerKg: 0,
       children: sugars.map((s) => ({
         id: `ast-leaf-${s.id}`,
         type: 'LEAF_INGREDIENT',
@@ -226,16 +234,21 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
     rootNode.children!.push(sugarBranch);
   }
 
-  // Branch 8: Enrichments & Eggs
-  const enrichments = recipe.ingredients.filter((i) => i.category === 'egg' || i.category === 'enrichment');
+  // Ovos, recheios e complementos
+  const enrichments = recipe.ingredients.filter(
+    (i) =>
+      !i.isFlour &&
+      !i.isPreferment &&
+      (i.category === 'egg' || i.category === 'enrichment' || i.category === 'inclusion' || i.category === 'other')
+  );
   if (enrichments.length > 0) {
     const enrichBranch: RecipeASTNode = {
       id: 'ast-branch-enrichment',
       type: 'BRANCH_ENRICHMENT',
-      name: 'Ramo de Enriquecimento (Ovos, Leite em Pó, Amilases)',
+      name: 'Ovos, Especiarias e Recheios',
       percentage: enrichments.reduce((sum, e) => sum + e.percentage, 0),
       weight: enrichments.reduce((sum, e) => sum + e.weight, 0),
-      costPerKg: 20.0,
+      costPerKg: 0,
       children: enrichments.map((e) => ({
         id: `ast-leaf-${e.id}`,
         type: 'LEAF_INGREDIENT',
@@ -255,13 +268,13 @@ export function buildRecipeAST(recipe: Recipe): RecipeASTNode {
 }
 
 /**
- * Deterministically evaluates the AST without AI hallucination.
- * Runs mass conservation, true global hydration, DDT balance, and costing.
+ * Evaluates recipe totals, water temp, and costing consistently across all groups.
  */
 export function evaluateDeterministicAST(
   root: RecipeASTNode,
   climate: ClimateSettings,
-  costing: CostingSettings
+  costing: CostingSettings,
+  targetUnits = 2
 ): EvaluatedAST {
   const rootFlourWeight = root.weight;
   let totalRawDoughWeight = root.weight;
@@ -273,27 +286,32 @@ export function evaluateDeterministicAST(
   let nodesCount = 1;
   const validationMessages: string[] = [];
 
-  // Recursive traversal function
   function traverse(node: RecipeASTNode) {
     if (!node.children || node.children.length === 0) return;
 
     for (const child of node.children) {
       nodesCount++;
 
-      // If it's not a top-level branch container, sum its weight & cost
-      if (child.type === 'LEAF_INGREDIENT' || child.type === 'SUBTREE_PREFERMENT') {
-        totalRawDoughWeight += child.weight;
-        directCost += (child.weight / 1000) * (child.costPerKg || 0);
-      }
+      const isBlendBreakdown = node.id === 'ast-branch-flour-blend' || child.id === 'ast-branch-flour-blend';
+      const isPrefermentBreakdown = node.type === 'SUBTREE_PREFERMENT';
 
-      // Check hydration & flour contributions
-      if (child.metadata?.flourContribution && child.type !== 'ROOT_FLOUR') {
-        totalFlourWeight += child.metadata.flourContribution;
-      }
-      if (child.metadata?.hydrationContribution) {
-        totalLiquidWeight += child.metadata.hydrationContribution;
-        if (child.type === 'BRANCH_LIQUID' || child.type === 'LEAF_INGREDIENT') {
-          directWaterWeight += child.metadata.hydrationContribution;
+      if (!isBlendBreakdown && !isPrefermentBreakdown) {
+        if (child.type === 'LEAF_INGREDIENT' || child.type === 'SUBTREE_PREFERMENT') {
+          totalRawDoughWeight += child.weight;
+          directCost += (child.weight / 1000) * (child.costPerKg || 0);
+        }
+
+        if (child.type === 'SUBTREE_PREFERMENT' && child.metadata?.flourContribution) {
+          totalFlourWeight += child.metadata.flourContribution;
+        }
+
+        if (child.metadata?.hydrationContribution) {
+          if (child.type === 'LEAF_INGREDIENT' || child.type === 'SUBTREE_PREFERMENT') {
+            totalLiquidWeight += child.metadata.hydrationContribution;
+          }
+          if (node.type === 'BRANCH_LIQUID' && child.type === 'LEAF_INGREDIENT') {
+            directWaterWeight += child.metadata.hydrationContribution;
+          }
         }
       }
 
@@ -303,32 +321,44 @@ export function evaluateDeterministicAST(
 
   traverse(root);
 
-  // Deterministic calculations
   const formulaHydrationPct = rootFlourWeight > 0 ? (directWaterWeight / rootFlourWeight) * 100 : 0;
   const realGlobalHydrationPct = totalFlourWeight > 0 ? (totalLiquidWeight / totalFlourWeight) * 100 : 0;
 
-  // DDT calculation
   const ddt = calculateDDT(climate, directWaterWeight);
 
-  // Costing
-  const packagingTotal = 2 * (costing.packagingCostPerUnit || 1.5);
-  const totalBatchCost = directCost + packagingTotal + (costing.energyGasCostPerBatch || 5.0) + (directCost * (costing.laborOverheadPercentage / 100));
-  const unitTotalCost = totalBatchCost / 2;
-  const suggestedSalePrice = (unitTotalCost * (costing.markupMultiplier || 3.5));
+  const units = Math.max(1, targetUnits);
+  const packagingTotal = units * (costing.packagingCostPerUnit || 0);
+  const totalBatchCost =
+    directCost +
+    packagingTotal +
+    (costing.energyGasCostPerBatch || 0) +
+    directCost * ((costing.laborOverheadPercentage || 0) / 100);
+  const unitDirectCost = directCost / units;
+  const unitTotalCost = totalBatchCost / units;
+  const suggestedSalePrice =
+    unitDirectCost * (costing.markupMultiplier || 3.0) +
+    (costing.packagingCostPerUnit || 0) +
+    unitTotalCost * 0.1;
 
-  // Physical-chemical checks
-  let isValid = true;
-  if (rootFlourWeight !== 1000) {
-    validationMessages.push(`Nó Raiz fora do padrão: ${rootFlourWeight}g (padrão estrito de Smart Defaults: 1.000g).`);
+  const isValid = rootFlourWeight > 0;
+  if (rootFlourWeight === 500) {
+    validationMessages.push('Receita calibrada na medida prática de 500g de farinha (ideal para 2 pães médios).');
   } else {
-    validationMessages.push('Nó Raiz calibrado estritamente em 1.000g (100% Baker\'s Percentage).');
+    validationMessages.push(`Receita ajustada para ${Math.round(rootFlourWeight)}g de farinha, rendendo ~${Math.round(totalRawDoughWeight)}g de massa no total.`);
   }
 
   if (realGlobalHydrationPct < 50) {
-    validationMessages.push('Alerta Hidro-Dinâmico: Hidratação muito baixa (<50%). Risco de miolo seco e desenvolvimento incompleto de glúten.');
+    validationMessages.push('Massa mais firme e sequinha, fácil de sovar sem grudar.');
   } else if (realGlobalHydrationPct > 85) {
-    validationMessages.push('Alerta de Alta Hidratação (>85%): Exige técnica de bassinage fracionada e farinha com W > 320.');
+    validationMessages.push('Massa bem molinha ou líquida — ponto típico de bolo ou pão de forma bem úmido.');
+  } else {
+    validationMessages.push('Quantidade equilibrada de água/leite para a massa ficar bem fofinha e macia.');
   }
+
+  const rawPerUnit = Math.round(totalRawDoughWeight / units);
+  validationMessages.push(
+    `Dividindo em ${units} ${units === 1 ? 'unidade' : 'unidades'}, cada peça fica com cerca de ${rawPerUnit}g antes de ir ao forno.`
+  );
 
   return {
     rootFlourWeight,

@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { Recipe } from '../types';
-import { 
-  Zap, 
-  Search, 
-  Loader2, 
-  Sparkles, 
-  CheckCircle2, 
-  RotateCcw,
-  SlidersHorizontal,
-  Layers,
-  ArrowRight
+import { normalizeQuickRecipe } from '../utils/bakersMath';
+import { findPresetRecipeMatch } from '../utils/recipeMatcher';
+import {
+  Zap,
+  Search,
+  Loader2,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 interface QuickEntryBarProps {
@@ -23,23 +22,40 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
 }) => {
   const [productName, setProductName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastFormulated, setLastFormulated] = useState<{
     name: string;
+    baseFlourWeight: number;
     question: string;
   } | null>(null);
 
   const quickPicks = [
-    'Pão Caseiro Fofinho',
+    'Pão Caseiro',
+    'Cuca de Uva',
+    'Cuca de Banana',
     'Bolo de Fubá',
     'Pão de Forma Macio',
-    'Pão Doce Tradicional',
-    'Bolo de Cenoura',
-    'Pão Francês Caseiro',
+    'Rosca Doce',
   ];
 
   const handleQuickFormulate = async (nameToUse?: string) => {
     const targetName = nameToUse || productName;
     if (!targetName.trim() || isLoading) return;
+
+    setErrorMessage(null);
+
+    // 1. Reconhecimento imediato das receitas clássicas (Cuca / Bolo de Fubá Cremoso / Pão Caseiro)
+    const presetMatch = findPresetRecipeMatch(targetName);
+    if (presetMatch) {
+      setLastFormulated({
+        name: presetMatch.recipe.name,
+        baseFlourWeight: Math.round(presetMatch.recipe.baseFlourWeight),
+        question: presetMatch.activeReformulationQuestion,
+      });
+      onRecipeLoaded(presetMatch.recipe, presetMatch.activeReformulationQuestion);
+      setProductName('');
+      return;
+    }
 
     setIsLoading(true);
 
@@ -55,73 +71,15 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
         throw new Error(data.error || 'Falha ao buscar receita.');
       }
 
-      // Ensure 1000g base flour as strict rule
-      const baseFlourWeight = 1000;
-      const formattedIngredients = (data.ingredients || []).map((ing: any, idx: number) => ({
-        id: `ing-${Date.now()}-${idx}`,
-        name: ing.name,
-        category: ing.category || 'other',
-        percentage: ing.percentage ?? 0,
-        weight: ing.weight ?? Math.round((baseFlourWeight * (ing.percentage || 0)) / 100),
-        isFlour: ing.isFlour ?? false,
-        isPreferment: ing.isPreferment ?? false,
-        prefermentHydration: ing.prefermentHydration,
-        costPerKg: ing.costPerKg ?? 5.0,
-        notes: ing.notes,
-      }));
+      const newRecipe = normalizeQuickRecipe(data, targetName, 500);
 
-      // Make sure primary flour has 1000g and 100%
-      const flourIndex = formattedIngredients.findIndex((i: any) => i.isFlour || i.category === 'flour');
-      if (flourIndex >= 0) {
-        formattedIngredients[flourIndex].weight = 1000;
-        formattedIngredients[flourIndex].percentage = 100;
-        formattedIngredients[flourIndex].isFlour = true;
-      }
-
-      const newRecipe: Recipe = {
-        id: `smart-${Date.now()}`,
-        name: data.name || targetName,
-        type: data.type || (targetName.toLowerCase().includes('bolo') ? 'cake' : 'bread'),
-        category: data.category || 'Receitas Caseiras',
-        description: data.description || `Receita caseira clara e deliciosa calculada com 1.000g de farinha como base.`,
-        baseFlourWeight: 1000,
-        targetUnits: data.targetUnits || 2,
-        targetBakedWeightPerUnit: data.targetBakedWeightPerUnit || 750,
-        ingredients: formattedIngredients,
-        climate: {
-          roomTemp: data.climate?.roomTemp ?? 24,
-          flourTemp: data.climate?.flourTemp ?? 22,
-          desiredDoughTemp: data.climate?.desiredDoughTemp ?? 26,
-          prefermentTemp: data.climate?.prefermentTemp ?? 22,
-          hasPreferment: false,
-          relativeHumidity: 60,
-          mixerType: 'manual',
-          frictionFactor: 2,
-          tapWaterTemp: 22,
-        },
-        costing: {
-          bakeLossPercentage: data.costing?.bakeLossPercentage ?? 14,
-          packagingCostPerUnit: data.costing?.packagingCostPerUnit ?? 1.0,
-          energyGasCostPerBatch: data.costing?.energyGasCostPerBatch ?? 4.0,
-          laborOverheadPercentage: data.costing?.laborOverheadPercentage ?? 15,
-          markupMultiplier: data.costing?.markupMultiplier ?? 3.0,
-          targetMarginPercent: data.costing?.targetMarginPercent ?? 65,
-        },
-        steps: (data.steps || []).map((st: any, idx: number) => ({
-          id: `step-${Date.now()}-${idx}`,
-          name: st.name,
-          durationMinutes: st.durationMinutes ?? 15,
-          temperature: st.temperature,
-          description: st.description,
-          criticalControlPoint: st.criticalControlPoint ?? 'Dica de ponto.',
-        })),
-      };
-
-      const activeQuestion = data.activeReformulationQuestion || 
-        'Quer adaptar essa receita para você? Se quiser fazer apenas metade com 500g de farinha, deixar mais docinho, mais fofinho ou trocar algum ingrediente, é só me falar que recalculo na hora!';
+      const activeQuestion =
+        data.activeReformulationQuestion ||
+        'Quer adaptar essa receita para você? Se quiser dobrar para 1 kg de farinha, fazer metade, deixar mais docinho ou trocar algum ingrediente, é só me falar que recalculo na hora!';
 
       setLastFormulated({
         name: newRecipe.name,
+        baseFlourWeight: Math.round(newRecipe.baseFlourWeight),
         question: activeQuestion,
       });
 
@@ -129,7 +87,7 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
       setProductName('');
     } catch (err: any) {
       console.error(err);
-      alert(`Ops, ocorreu um erro ao carregar a receita: ${err.message}`);
+      setErrorMessage(err.message || 'Ops, não consegui montar a receita agora. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -146,13 +104,13 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
             <h3 className="text-xs font-bold text-white uppercase font-sans tracking-wide flex items-center gap-1.5">
               <span>O que você quer assar hoje?</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-semibold border border-amber-500/20">
-                Base 1.000g de farinha
+                Receita Caseira (Xícaras & Gramas)
               </span>
             </h3>
           </div>
         </div>
         <span className="text-[11px] text-stone-400">
-          Digite apenas o nome (ex: "pão caseiro") para receber a receita completa e ingredientes em gramas
+          Digite o nome (ex: "Cuca de uva", "Bolo de fubá", "Pão caseiro") para receber a receita inteira recalculada
         </span>
       </div>
 
@@ -170,7 +128,7 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
             type="text"
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
-            placeholder='Digite o que tem vontade de fazer (ex: "pão caseiro", "bolo de fubá", "pão fofinho")...'
+            placeholder='Digite o que quer assar (ex: "Cuca", "Cuca de uva", "Bolo de fubá", "Pão caseiro")...'
             disabled={isLoading}
             className="w-full bg-stone-950 border border-stone-700 rounded-xl pl-9 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-stone-400 focus:outline-none focus:border-amber-500"
           />
@@ -188,11 +146,19 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
           ) : (
             <>
               <Zap className="w-3.5 h-3.5 fill-current" />
-              <span>Ver Receita (1 kg)</span>
+              <span>Ver Receita (500g)</span>
             </>
           )}
         </button>
       </form>
+
+      {/* Inline Error Message */}
+      {errorMessage && (
+        <div className="p-3 bg-red-950/40 border border-red-900/50 rounded-xl text-xs text-red-300 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       {/* Quick Pills */}
       <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-1">
@@ -218,7 +184,7 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
             <div className="space-y-1.5 flex-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-amber-300 tracking-wide">
-                  Receita Pronta: {lastFormulated.name} (1.000g de farinha)
+                  Receita Pronta: {lastFormulated.name} ({lastFormulated.baseFlourWeight}g de farinha)
                 </span>
                 <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Aberta na bancada
@@ -233,31 +199,67 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
                 <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[11px]">
                   <span className="text-stone-400">Quer ajustar?</span>
                   <button
-                    onClick={() => onOpenAuditTab(`Quero fazer só metade da receita de ${lastFormulated.name} com 500g de farinha. Recalcule todas as quantidades em gramas e me mostre a receita completa pronta para fazer!`)}
+                    type="button"
+                    onClick={() =>
+                      onOpenAuditTab(
+                        `Quero dobrar a receita de ${lastFormulated.name} para usar 1.000g (1 kg) de farinha. Recalcule todas as quantidades em xícaras e gramas e me mostre a receita completa!`
+                      )
+                    }
                     className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-amber-300 border border-amber-500/30 font-medium transition"
                   >
-                    ⚖️ Fazer Metade (500g)
+                    ⚖️ Dobrar Receita (1 kg)
                   </button>
                   <button
-                    onClick={() => onOpenAuditTab(`Quero deixar o ${lastFormulated.name} ainda mais fofinho e macio. O que posso ajustar na água/leite ou gordura? Entregue a receita inteira atualizada com as gramas exatas.`)}
+                    type="button"
+                    onClick={() =>
+                      onOpenAuditTab(
+                        `Quero fazer só metade da receita de ${lastFormulated.name} com 250g de farinha. Recalcule todas as quantidades em xícaras e gramas e me mostre a receita completa!`
+                      )
+                    }
+                    className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-amber-300 border border-amber-500/30 font-medium transition"
+                  >
+                    🥣 Fazer Metade (250g)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOpenAuditTab(
+                        `Quero deixar o ${lastFormulated.name} ainda mais fofinho e macio. O que posso ajustar na água/leite ou gordura? Entregue a receita inteira atualizada com xícaras e gramas.`
+                      )
+                    }
                     className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-amber-300 border border-amber-500/30 font-medium transition"
                   >
                     ☁️ Deixar Mais Fofinho
                   </button>
                   <button
-                    onClick={() => onOpenAuditTab(`Quero que o ${lastFormulated.name} fique mais docinho. Aumente o açúcar de forma equilibrada e me entregue a receita inteira recalculada com passo a passo.`)}
+                    type="button"
+                    onClick={() =>
+                      onOpenAuditTab(
+                        `Quero que o ${lastFormulated.name} fique mais docinho. Aumente o açúcar de forma equilibrada e me entregue a receita inteira recalculada com passo a passo.`
+                      )
+                    }
                     className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-amber-300 border border-amber-500/30 font-medium transition"
                   >
                     🍯 Mais Docinho
                   </button>
                   <button
-                    onClick={() => onOpenAuditTab(`Quero trocar o óleo por manteiga na receita de ${lastFormulated.name}. Calcule a quantidade exata de manteiga e entregue a receita completa pronta.`)}
+                    type="button"
+                    onClick={() =>
+                      onOpenAuditTab(
+                        `Quero trocar o óleo por manteiga na receita de ${lastFormulated.name}. Calcule a quantidade exata de manteiga em colheres e gramas e entregue a receita completa pronta.`
+                      )
+                    }
                     className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-amber-300 border border-amber-500/30 font-medium transition"
                   >
                     🧈 Trocar por Manteiga
                   </button>
                   <button
-                    onClick={() => onOpenAuditTab(`Quero usar leite integral no lugar da água em ${lastFormulated.name}. Me entregue a receita completa recalculada com o passo a passo.`)}
+                    type="button"
+                    onClick={() =>
+                      onOpenAuditTab(
+                        `Quero usar leite integral no lugar da água em ${lastFormulated.name}. Me entregue a receita completa recalculada com o passo a passo.`
+                      )
+                    }
                     className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-amber-300 border border-amber-500/30 font-medium transition"
                   >
                     🥛 Usar Leite

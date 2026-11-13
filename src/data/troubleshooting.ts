@@ -3,121 +3,144 @@ import { TroubleshootingIssue } from '../types';
 export const TROUBLESHOOTING_ISSUES: TroubleshootingIssue[] = [
   {
     id: 'pao-compacto-miolo-denso',
-    title: 'Pão Compacto, Pesado ou com Miolo Gomoso',
+    title: 'Pão Pesado, Baixinho ou Massudo por Dentro',
     category: 'miolo',
     symptoms: [
-      'Ausência de alvéolos abertos',
-      'Sensação de massa crua ou úmida ao toque após resfriado',
-      'Pão não atinge o volume esperado e fica pesado na mão',
+      'O pão não cresceu bonito e ficou baixinho',
+      'Miolo apertado, pesado na mão ou com cara de massa crua',
+      'Ficou embatumado depois que esfriou',
     ],
-    primaryRootCause: 'Sub-fermentação severa ou corte precoce antes do resfriamento completo.',
-    chemicalBiologicalMechanism: 'Na sub-fermentação, as leveduras não geraram pressão de CO2 suficiente para expandir as células de gás antes da coagulação térmica das proteínas a 75°C. Cortar o pão quente (<50°C) causa colapso do amido ainda em transição de retrogradação, gelatinizando as paredes dos alvéolos por condensação de vapor retido.',
-    immediateFix: 'Deixe o pão resfriar sobre grelha vazada por no mínimo 2 a 3 horas antes de fatiar para permitir a redistribuição e saída do vapor residual.',
-    preventiveAdjustment: 'Aumente o tempo de fermentação em bloco em 20-35% ou aguarde o aumento volumétrico de 50-75%. Verifique se a DDT (Temperatura Desejada da Massa) atingiu 24-25°C. Farinhas de maior força (W > 280) necessitam de mais tempo de autólise.',
-    technicalMetric: 'Temperatura interna pós-forneamento deve atingir 96°C a 98°C no centro geométrico.',
+    primaryRootCause: 'Faltou tempo para a massa crescer ou cortou o pão ainda muito quente.',
+    chemicalBiologicalMechanism:
+      'Quando a massa assa antes de dobrar de tamanho, não dá tempo de o fermento formar aquelas bolhinhas de ar que deixam o pão fofo. E se a gente corta o pão saindo fumaça do forno, o vapor de dentro esmaga o miolo mole e ele fica parecendo massa crua.',
+    immediateFix:
+      'Deixe o pão esfriar em cima de uma gradinha ou pano seco por pelo menos 40 minutinhos antes de fatiar.',
+    preventiveAdjustment:
+      'Tenha paciência no descanso! Cubra a tigela com um pano limpo e deixe dentro do forno desligado até dobrar de volume. Verifique se o fermento está na validade e se a água estava morninha (não quente demais).',
+    technicalMetric: 'Sinal de pronto: massa fofinha que dobrou de tamanho antes de ir ao forno.',
   },
   {
-    id: 'pestana-cega-sem-abertura',
-    title: 'Pestana Cega / Pão não Abre a Pestana (Ear)',
-    category: 'casca',
-    symptoms: [
-      'O corte scarificado não forma crista projetada',
-      'Corte cicatrizou plano ou a casca rasgou na base da assadeira',
-      'Pão arredondou sem salto de forno direcional',
-    ],
-    primaryRootCause: 'Falta de injeção de vapor inicial ou corte com ângulo incorreto / lâmina sem fio.',
-    chemicalBiologicalMechanism: 'Sem vapor saturado nos primeiros 10-15 minutos, a superfície da massa desidrata rapidamente e atinge 100°C+, formando uma casca rígida antes que a massa sofra a expansão térmica dos gases (oven spring). O corte deve ser executado a 30° (horizontal/tangencial) para criar uma aba delgada que descole e projete sob a pressão interna.',
-    immediateFix: 'Se o forno ainda estiver nos primeiros 3 minutos de forneamento, injete vapor suplementar imediato ou cubra com panela/cúpula pré-aquecida.',
-    preventiveAdjustment: 'Gere vapor abundante através de pedras vulcânicas/corrente de ferro aquecidas ou asse em panela de ferro fundido fechada a 240°C por 20 minutos. Angule a lâmina a 30° em relação à superfície da massa com profundidade de 6 a 8mm.',
-    technicalMetric: 'Pressão de vapor ou saturação de umidade relativa de 100% durante os primeiros 15 minutos.',
-  },
-  {
-    id: 'flying-crust-teto-oco',
-    title: 'Teto Oco ("Flying Crust") com Fundo Denso e Compacto',
-    category: 'miolo',
-    symptoms: [
-      'Uma grande caverna de ar se forma logo abaixo da casca superior',
-      'Todo o restante do miolo no fundo fica compacto e achatado',
-      'A casca superior se separa facilmente ao pressionar',
-    ],
-    primaryRootCause: 'Sub-fermentação da primeira fermentação combinada com excesso de calor no teto do forno.',
-    chemicalBiologicalMechanism: 'A levedura ainda possui excesso de açúcares fermentescíveis não degradados. Ao entrar no forno, a irradiação direta do teto aquece a camada superior da massa violentamente, expandindo as poucas bolhas superficiais em uma bolha gigante que se desprende do corpo da massa, enquanto o fundo denso não tem sustentação alveolar.',
-    immediateFix: 'Reduza a resistência superior do forno ou proteja o topo com papel alumínio nos primeiros 15 minutos.',
-    preventiveAdjustment: 'Aumente o tempo de bulk fermentation. Certifique-se de que a massa esteja uniformemente aerada antes de modelar. Aplique dobras de tensão suficientes para redistribuir as colônias de fermento.',
-    technicalMetric: 'Densidade da massa crua antes de assar deve estar uniforme e com densidade de ~0.65-0.75 g/cm³.',
-  },
-  {
-    id: 'massa-solarizada-perda-estrutura',
-    title: 'Massa Solarizada / Perda de Glúten / Massa que "Derrete"',
-    category: 'massa',
-    symptoms: [
-      'Massa perde totalmente a tensão após a modelagem e escorre como líquido',
-      'Superfície fica pegajosa, brilhante e rasga ao menor estiramento',
-      'Pão espalha como uma pizza ao virar na pá',
-    ],
-    primaryRootCause: 'Sobre-fermentação extrema / Ataque proteolítico enzimático por pH excessivamente ácido (< 3.8).',
-    chemicalBiologicalMechanism: 'As bactérias ácido-lácticas (LAB) acumularam ácido acético e lático em excesso, reduzindo o pH abaixo do ponto isoelétrico do glúten. Isso ativa proteases endógenas da farinha que hidrolisam e quebram as ligações peptídicas das gluteninas e gliadinas, destruindo irreversivelmente a rede elástica.',
-    immediateFix: 'Não é possível recuperar a estrutura para pão rústico de corte. Transforme imediatamente em Focaccia de assadeira untada com azeite ou em crackers crocantes salgados assados finos.',
-    preventiveAdjustment: 'Reduza a porcentagem de levain (ex: de 25% para 15-18% em dias quentes), utilize água gelada para regular a DDT em 23-24°C, e encurte o tempo de fermentação em bloco.',
-    technicalMetric: 'pH da massa ao final do bulk não deve cair abaixo de 4.1 - 4.2; levain deve ser inoculado no pico com pH entre 3.9 e 4.1.',
-  },
-  {
-    id: 'excesso-acidez-pao-azedo',
-    title: 'Excesso de Acidez / Sabor Azedo Vinagroso Desagradável',
+    id: 'massa-nao-cresceu',
+    title: 'A Massa Não Cresceu Nada na Tigela',
     category: 'fermentacao',
     symptoms: [
-      'Gosto ácido pungente que queima o paladar',
-      'Aroma pungente de vinagre (ácido acético) e não iogurte suave (ácido lático)',
-      'Miolo esfarelento ou com coloração acinzentada',
+      'Passou 1 hora e a massa continuou do mesmo tamanhinho',
+      'Massa pesada e fria ao toque',
+      'Não fez espuminha quando misturou o fermento',
     ],
-    primaryRootCause: 'Desbalanceamento da relação ácido lático / ácido acético devido a fermentação em temperatura excessivamente baixa ou levain com alta acidez acética.',
-    chemicalBiologicalMechanism: 'Lactobacillus heterofermentativos produzem predominantemente ácido acético em temperaturas frias (<18°C) ou com hidratações baixas no levain. Levains alimentados com pouca frequência acumulam ácidos livres que inibem o fermento selvagem.',
-    immediateFix: 'Alinhe consumo com recheios ricos em gordura/queijos ou toste as fatias para evaporar parte dos ácidos voláteis.',
-    preventiveAdjustment: 'Refresque o levain a 1:3:3 ou 1:4:4 antes do uso. Mantenha o levain entre 24°C e 27°C para estimular a via homoláctica (ácido lático suave). Reduza o tempo de retardo na geladeira para menos de 14 horas.',
-    technicalMetric: 'Proporção ideal LAB:Leveduras ~ 100:1 e razão ácido lático : acético de aproximadamente 3:1 a 4:1.',
+    primaryRootCause: 'Água quente demais queimou o fermento, ou a cozinha estava muito fria e com corrente de ar.',
+    chemicalBiologicalMechanism:
+      'O fermento biológico é um bichinho vivo bem sensível: água pelando (que queima o dedo) mata o fermento na hora. Já o vento frio deixa ele dormindo sem forças para fazer a massa subir.',
+    immediateFix:
+      'Aqueça levemente o forno por apenas 2 minutinhos, DESLIGUE o fogo, confira se está só morninho com a mão, e coloque a tigela coberta lá dentro por mais 45 minutos.',
+    preventiveAdjustment:
+      'Sempre teste a água ou o leite no pulso: tem que estar morninho como banho de bebê. Misture primeiro com o açúcar e espere 10 minutinhos espumar antes de jogar o sal e a farinha.',
+    technicalMetric: 'Dica de vó: 5g de fermento seco (meio pacotinho) para cada 500g de farinha.',
   },
   {
-    id: 'casca-grossa-coriacea',
-    title: 'Casca Muito Grossa, Densa ou Coriácea (Borrachuda)',
+    id: 'massa-grudenta-ou-dura',
+    title: 'Massa Muito Grudenta na Mão ou Dura Demais',
+    category: 'massa',
+    symptoms: [
+      'Massa cola inteira nos dedos e não desgruda da mesa',
+      'Ou o contrário: massa seca, rachando e difícil de sovar',
+    ],
+    primaryRootCause: 'Falta ou excesso de farinha de trigo na hora da sova (cada marca de farinha absorve água de um jeito).',
+    chemicalBiologicalMechanism:
+      'Algumas farinhas são mais sequinhas e pedem um tiquinho a mais de água; outras são mais úmidas. Se jogar farinha demais de uma vez para parar de grudar, o pão fica duro e seco depois de assado.',
+    immediateFix:
+      'Se estiver grudenta, unte suas mãos com um fiozinho de óleo e sove batendo e dobrando por 5 minutinhos antes de polvilhar mais farinha. Se estiver dura e seca, molhe as pontas dos dedos em água morninha e vá sovando aos poucos.',
+    preventiveAdjustment:
+      'Coloque a farinha aos pouquinhos até dar ponto de massa macia que desgruda da tigela. Pão gostoso tem massa bem macia, levemente úmida, sem ser dura.',
+    technicalMetric: 'Ponto certo: massa lisinha como bumbum de neném que não gruda na mão limpa.',
+  },
+  {
+    id: 'casca-dura-ou-ressecada',
+    title: 'Casca Muito Dura, Seca ou Quebradiça',
     category: 'casca',
     symptoms: [
-      'Casca difícil de mastigar, exigindo esforço mandibular',
-      'Perda rápida da crocância logo após esfriar',
-      'Cor opaca e sem brilho vítreo',
+      'Casca difícil de morder depois que o pão esfriou',
+      'Pão ressecado por fora e sem brilho',
+      'Casca rachou por baixo ou pelos lados',
     ],
-    primaryRootCause: 'Forneamento em temperatura insuficiente com ar seco ou circulação de convecção excessiva sem vapor.',
-    chemicalBiologicalMechanism: 'Temperatura baixa no forno (< 210°C) prolonga o tempo necessário para assar o miolo (>50 min), provocando desidratação profunda das camadas externas da massa. Sem vapor, a dextrinização dos amidos superficiais não ocorre, gerando uma casca grossa e fibrosa ao invés de uma película cristalina delgada.',
-    immediateFix: 'Regenerar no forno a 200°C por 5 minutos com borrifo leve de água para re-cristalizar a crosta.',
-    preventiveAdjustment: 'Aumente a temperatura inicial do forno para 240-250°C. Garanta vapor denso nos primeiros 15 a 20 minutos. Reduza a circulação da ventoinha do forno nos primeiros 15 min.',
-    technicalMetric: 'Tempo de forneamento para pães de 750g não deve exceder 42-45 minutos.',
+    primaryRootCause: 'Forno fraco demais (demorou muito para assar) ou faltou passar manteiga/óleo na massa.',
+    chemicalBiologicalMechanism:
+      'Quando o forno está frio demais, o pão precisa ficar muito tempo lá dentro e acaba perdendo toda a umidade, formando uma casca grossa e dura.',
+    immediateFix:
+      'Pincele manteiga ou margarina derretida por cima da casca assim que sair do forno quentinho e cubra com um pano de prato limpo por 10 minutos para amaciar.',
+    preventiveAdjustment:
+      'Pré-aqueça bem o forno a 180°C antes de colocar a assadeira. Não deixe a massa descoberta pegando vento enquanto cresce (sempre cubra com pano de prato ou plástico).',
+    technicalMetric: 'Forno médio a 180°C por 30 a 35 minutos até dourar bonito.',
+  },
+  {
+    id: 'pao-cheiro-forte-fermento',
+    title: 'Pão com Cheiro ou Gosto Forte de Fermento / Azedo',
+    category: 'fermentacao',
+    symptoms: [
+      'Cheiro muito forte de fermento ao cortar o pão',
+      'A massa cresceu demais e depois murchou no forno',
+      'Sabor um pouco azedo',
+    ],
+    primaryRootCause: 'Fermento em excesso ou massa que cresceu tempo demais em dia muito quente.',
+    chemicalBiologicalMechanism:
+      'Em dias quentes de verão, a massa cresce muito rápido. Se passar do ponto e crescer demais, o fermento cansa, consome todo o açúcar e a massa murcha no forno deixando gosto forte.',
+    immediateFix:
+      'Sirva as fatias tostadinhas na frigideira com manteiga ou requeijão — o calor suaviza o aroma.',
+    preventiveAdjustment:
+      'Para 500g de farinha (2 pães), use apenas meio pacotinho de fermento seco (5g), ou 1 pacotinho inteiro (10g) só em dias bem frios. No verão, use água em temperatura ambiente ou fresquinha.',
+    technicalMetric: 'Na hora de assar, o pão deve ter dobrado de tamanho, sem transbordar da fôrma.',
+  },
+  {
+    id: 'teto-oco-buraco-em-cima',
+    title: 'Buraco Grande Debaixo da Casca de Cima',
+    category: 'miolo',
+    symptoms: [
+      'Um vão vazio enorme logo abaixo da casca superior',
+      'A casca de cima solta quando vai passar manteiga',
+      'Parte de baixo do pão fica mais apertada',
+    ],
+    primaryRootCause: 'Ficou ar preso ao enrolar o pão ou faltou fechar bem a pontinha do rocambole.',
+    chemicalBiologicalMechanism:
+      'Quando enrolamos a massa frouxa demais, ficam bolsas de ar grandes lá dentro. No calor do forno, esse ar incha rápido e empurra a casca de cima para longe do miolo.',
+    immediateFix:
+      'Na próxima modelagem, aperte levemente a massa com as mãos abertas ou passe o rolo para tirar todas as bolhas grandes de ar antes de enrolar.',
+    preventiveAdjustment:
+      'Enrole o pão bem firme e apertadinho feito rocambole e dê beliscões na emenda para selar bem antes de colocar na fôrma untada.',
+    technicalMetric: 'Emenda da massa sempre virada para baixo na fôrma.',
   },
   {
     id: 'bolo-solado-embatumado',
-    title: 'Bolo Solado / Embatumado / Pesado sem Crescimento',
+    title: 'Bolo Solado / Pesado que Não Cresceu',
     category: 'bolo',
     symptoms: [
-      'Bolo baixo, denso e com textura borrachuda',
-      'Listras gomosas translúcidas na base da massa assada',
-      'Falta total de aeração e maciez',
+      'Bolo baixinho, pesado e parecendo pudim duro por dentro',
+      'Listra escura e pesada no fundo da fôrma',
+      'Massa sem furinhos fofos',
     ],
-    primaryRootCause: 'Desenvolvimento excessivo de glúten por batimento da farinha ou desequilíbrio na proporção de líquidos/gordura/açúcar.',
-    chemicalBiologicalMechanism: 'A farinha de trigo contém glutenina e gliadina. Ao bater a farinha vigorosamente após a adição dos líquidos, a malha de glúten se forma (como em um pão), aprisionando a massa de forma rígida e impedindo o fermento químico de expandir as bolhas. A gordura e o açúcar em excesso também podem quebrar a emulsão líquida.',
-    immediateFix: 'O bolo solado não pode ser re-assado. Pode ser reaproveitado como base de cake pops, brigadeiro de bolo ou farofa crocante para sobremesa.',
-    preventiveAdjustment: 'Peneire a farinha e incorpore apenas delicadamente com espátula ou batedor manual (fouet) até desaparecerem os grumos secos. Nunca use batedeira em velocidade alta após adicionar a farinha. Utilize farinhas com baixo teor proteico (<9% proteína / farinha especial para confeitaria).',
-    technicalMetric: 'Tempo de mistura após adição da farinha: máximo 45 a 60 segundos com movimentos lentos envolventes.',
+    primaryRootCause: 'Bateu demais a farinha de trigo ou usou fermento de bolo vencido.',
+    chemicalBiologicalMechanism:
+      'Se a gente bate a farinha de trigo no liquidificador ou na batedeira forte depois de pronta, a massa fica elástica igual pão e trava o crescimento do bolo, deixando ele pesado e solado.',
+    immediateFix:
+      'Bolo solado vira uma delícia esfarelado como pavê, bolo de pote ou brigadeiro de bolo! Teste o fermento colocando uma pitada em um copo com água: se borbulhar na hora, está ótimo.',
+    preventiveAdjustment:
+      'Bata no liquidificador só ovos, leite, óleo e açúcar. Despeje em uma tigela e misture a farinha e o fermento à mão, bem devagarzinho com uma colher, só até sumir a farinha branca.',
+    technicalMetric: 'Regra de ouro: farinha e fermento de bolo sempre misturados à mão com delicadeza.',
   },
   {
     id: 'bolo-afundou-centro',
-    title: 'Bolo que Afunda no Centro (Colapso Central pós-forno)',
+    title: 'Bolo Cresceu Lindo e Afundou no Meio',
     category: 'bolo',
     symptoms: [
-      'Bolo cresce bem no forno, mas ao retirar forma uma cratera no centro',
-      'Centro úmido e bordas altas e secas',
+      'Bolo subiu bonito no forno, mas fez um buraco no centro quando saiu',
+      'Bordas altas e meio murcho e molhadinho',
     ],
-    primaryRootCause: 'Excesso de fermento químico ou abertura prematura da porta do forno antes da gelatinização.',
-    chemicalBiologicalMechanism: 'O excesso de fermento químico gera volume de gás superior à capacidade de suporte das proteínas coaguladas do ovo e do amido gelatinizado. A estrutura atinge o ponto de ruptura antes de secar e colapsa sob a gravidade. Abrir o forno antes dos 20-25 minutos causa choque térmico e perda de pressão de sustentação.',
-    immediateFix: 'Preencha a depressão central com ganache, brigadeiro de colher ou frutas frescas para compor uma sobremesa montada.',
-    preventiveAdjustment: 'Pese o fermento químico com balança de precisão de 0.1g (geralmente 2.5% a 3% sobre o peso da farinha, nunca mais). Não abra a porta do forno antes de 75% do tempo total de forneamento.',
-    technicalMetric: 'Dosagem estrita de fermento químico: 10g a 14g por 500g de farinha base.',
+    primaryRootCause: 'Abriu a porta do forno cedo demais ou colocou fermento químico em excesso.',
+    chemicalBiologicalMechanism:
+      'Antes de o meio do bolo firmar com o calor, o ar frio que entra quando abrimos o forno faz a massa murchar na hora. Fermento demais também faz crescer rápido demais e desabar depois.',
+    immediateFix:
+      'Cubra o meio afundado com uma calda quentinha de chocolate ou goiabada derretida — ninguém nem percebe e fica maravilhoso!',
+    preventiveAdjustment:
+      'Use exatamente 1 colher de sopa de fermento em pó (15g) para um bolo médio e NUNCA abra o forno nos primeiros 25 minutos de forno. Só faça o teste do palitinho quando sentir o cheirinho de bolo pronto pela casa.',
+    technicalMetric: 'Espere pelo menos 25 a 30 minutos antes de abrir a portinha do forno.',
   },
 ];

@@ -38,6 +38,16 @@ export const TechnicalSheetModal: React.FC<TechnicalSheetModalProps> = ({
   );
 
   const totalRawWeight = recipe.ingredients.reduce((s, i) => s + i.weight, 0);
+  const isCuca = recipe.name.toLowerCase().includes('cuca');
+  const unitLabel = isCuca
+    ? `${recipe.targetUnits} cuca${recipe.targetUnits === 1 ? ' grande' : 's'}`
+    : recipe.type === 'cake'
+    ? `${recipe.targetUnits} bolo${recipe.targetUnits === 1 ? '' : 's'}`
+    : `${recipe.targetUnits} pã${recipe.targetUnits === 1 ? 'o médio' : 'es médios'}`;
+
+  // Deterministic reference code from recipe id (avoids Math.random() during render)
+  const recipeCode = Array.from(recipe.id || 'receita')
+    .reduce((acc, ch) => ((acc * 31 + ch.charCodeAt(0)) % 9000) + 1000, 1234);
 
   const handlePrint = () => {
     window.print();
@@ -48,7 +58,7 @@ export const TechnicalSheetModal: React.FC<TechnicalSheetModalProps> = ({
 🧺 DOUGHCRAFT - RECEITA CASEIRA DA VOVÓ
 =====================================================
 RECEITA: ${recipe.name.toUpperCase()}
-RENDIMENTO: ${recipe.targetUnits} pães médios (ou 1 bolo grande)
+RENDIMENTO: ${unitLabel} (~${Math.round(costing.bakedUnitWeight)}g cada assado)
 PESO TOTAL DA MASSA: ~${Math.round(totalRawWeight)}g
 
 -----------------------------------------------------
@@ -66,8 +76,8 @@ ${recipe.steps.map((s, idx) => `${idx + 1}. ${s.name} (${s.durationMinutes} min)
 
 -----------------------------------------------------
 💰 CUSTO E RENDIMENTO:
-• Custo dos Insumos: R$ ${costing.directIngredientsCost.toFixed(2)}
-• Custo por Pão: R$ ${costing.unitTotalCost.toFixed(2)}
+• Custo dos Ingredientes: R$ ${costing.directIngredientsCost.toFixed(2)}
+• Custo por Unidade: R$ ${costing.unitTotalCost.toFixed(2)}
 • Preço Sugerido para Venda: R$ ${costing.suggestedSalePriceMarkup.toFixed(2)} cada
 =====================================================`;
 
@@ -135,8 +145,8 @@ ${recipe.steps.map((s, idx) => `${idx + 1}. ${s.name} (${s.durationMinutes} min)
               </div>
               <div className="text-right font-mono text-xs text-stone-400 print:text-gray-600">
                 <div>DATA: {new Date().toLocaleDateString('pt-BR')}</div>
-                <div>LOTE: #{Math.floor(1000 + Math.random() * 9000)}</div>
-                <div className="text-amber-400 print:text-black font-bold">REPRODUTIBILIDADE 100%</div>
+                <div>RECEITA: #{recipeCode}</div>
+                <div className="text-amber-400 print:text-black font-bold">MEDIDAS EXATAS EM GRAMAS</div>
               </div>
             </div>
           </div>
@@ -145,19 +155,19 @@ ${recipe.steps.map((s, idx) => `${idx + 1}. ${s.name} (${s.durationMinutes} min)
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 print:border print:border-black print:p-2">
             <div className="bg-stone-900 print:bg-white p-3 rounded-lg border border-stone-800 print:border-0">
               <span className="text-[11px] text-stone-400 print:text-gray-700 block font-mono">Farinha Base:</span>
-              <strong className="text-lg font-mono text-white print:text-black">{recipe.baseFlourWeight}g</strong>
+              <strong className="text-lg font-mono text-white print:text-black">{Math.round(recipe.baseFlourWeight)}g</strong>
             </div>
             <div className="bg-stone-900 print:bg-white p-3 rounded-lg border border-stone-800 print:border-0">
               <span className="text-[11px] text-stone-400 print:text-gray-700 block font-mono">Massa Crua Total:</span>
               <strong className="text-lg font-mono text-amber-400 print:text-black">{Math.round(totalRawWeight)}g</strong>
             </div>
             <div className="bg-stone-900 print:bg-white p-3 rounded-lg border border-stone-800 print:border-0">
-              <span className="text-[11px] text-stone-400 print:text-gray-700 block font-mono">Hidratação Real:</span>
-              <strong className="text-lg font-mono text-cyan-400 print:text-black">{hydration.trueGlobalHydrationPct.toFixed(1)}%</strong>
+              <span className="text-[11px] text-stone-400 print:text-gray-700 block font-mono">Água e Líquidos:</span>
+              <strong className="text-lg font-mono text-cyan-400 print:text-black">{Math.round(hydration.formulaWaterWeight)} ml</strong>
             </div>
             <div className="bg-stone-900 print:bg-white p-3 rounded-lg border border-stone-800 print:border-0">
               <span className="text-[11px] text-stone-400 print:text-gray-700 block font-mono">Rendimento:</span>
-              <strong className="text-lg font-mono text-emerald-400 print:text-black">{recipe.targetUnits} un (~{Math.round(costing.bakedUnitWeight)}g)</strong>
+              <strong className="text-lg font-mono text-emerald-400 print:text-black">{unitLabel} (~{Math.round(costing.bakedUnitWeight)}g)</strong>
             </div>
           </div>
 
@@ -197,33 +207,37 @@ ${recipe.steps.map((s, idx) => `${idx + 1}. ${s.name} (${s.durationMinutes} min)
             </table>
           </div>
 
-          {/* Thermal Balance (DDT) Section */}
+          {/* Water Temperature Guidance */}
           <div className="mb-6 p-4 rounded-xl bg-stone-900/60 print:bg-white border border-stone-800 print:border-black">
             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-300 print:text-black font-mono mb-2 flex items-center gap-1.5">
               <Thermometer className="w-4 h-4 text-cyan-400 print:text-black" />
-              2. Balanço Térmico & Climatização (DDT)
+              2. O Segredo da Água Morninha
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
               <div>
-                <span className="text-stone-400 print:text-gray-600 block">DDT Alvo:</span>
+                <span className="text-stone-400 print:text-gray-600 block">Calor Ideal da Massa:</span>
                 <strong className="text-emerald-400 print:text-black">{recipe.climate.desiredDoughTemp}°C</strong>
               </div>
               <div>
-                <span className="text-stone-400 print:text-gray-600 block">Temp. Ambiente:</span>
+                <span className="text-stone-400 print:text-gray-600 block">Cozinha Hoje:</span>
                 <strong className="text-white print:text-black">{recipe.climate.roomTemp}°C</strong>
               </div>
               <div>
-                <span className="text-stone-400 print:text-gray-600 block">Fricção Mecânica:</span>
+                <span className="text-stone-400 print:text-gray-600 block">Calor da Sova:</span>
                 <strong className="text-white print:text-black">+{recipe.climate.frictionFactor}°C</strong>
               </div>
               <div>
-                <span className="text-stone-400 print:text-gray-600 block">Temp. Água Calculada:</span>
-                <strong className="text-cyan-400 print:text-black text-sm">{ddt.waterTempTarget.toFixed(1)}°C</strong>
+                <span className="text-stone-400 print:text-gray-600 block">Temperatura da Água:</span>
+                <strong className="text-cyan-400 print:text-black text-sm">{ddt.waterTempTarget.toFixed(0)}°C</strong>
               </div>
             </div>
-            {ddt.needsIce && (
-              <div className="mt-2 text-xs font-mono text-sky-300 print:text-black font-bold pt-2 border-t border-stone-800 print:border-black">
-                ⚠️ ADIÇÃO DE GELO OBRIGATÓRIA: {ddt.iceWeight}g de gelo picado + {ddt.liquidWaterWeight}g de água gelada.
+            {ddt.needsIce ? (
+              <div className="mt-2 text-xs font-sans text-sky-300 print:text-black font-bold pt-2 border-t border-stone-800 print:border-black">
+                ❄️ Dia muito quente! Use {ddt.iceWeight}g de gelo + {ddt.liquidWaterWeight}g de água gelada para a massa não amolecer.
+              </div>
+            ) : (
+              <div className="mt-2 text-xs font-sans text-amber-300/90 print:text-black pt-2 border-t border-stone-800 print:border-black">
+                💡 Teste no pulso: água morninha como banho de bebê (nunca quente demais para não queimar o fermento).
               </div>
             )}
           </div>
@@ -232,7 +246,7 @@ ${recipe.steps.map((s, idx) => `${idx + 1}. ${s.name} (${s.durationMinutes} min)
           <div className="mb-6">
             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-300 print:text-black font-mono mb-2 flex items-center gap-1.5">
               <Clock className="w-4 h-4 text-amber-400 print:text-black" />
-              👩‍🍳 2. Como Fazer (Passo a Passo da Vovó)
+              👩‍🍳 3. Como Fazer (Passo a Passo da Vovó)
             </h4>
             <div className="space-y-2">
               {recipe.steps.map((st, i) => (
@@ -245,7 +259,7 @@ ${recipe.steps.map((s, idx) => `${idx + 1}. ${s.name} (${s.durationMinutes} min)
                     <span className="text-stone-300 print:text-black">{st.description}</span>
                     {st.criticalControlPoint && (
                       <span className="block text-[11px] text-amber-400 print:text-gray-700 mt-0.5">
-                        [PCC: {st.criticalControlPoint}]
+                        💡 Segredo da Vovó: {st.criticalControlPoint}
                       </span>
                     )}
                   </div>
@@ -257,8 +271,8 @@ ${recipe.steps.map((s, idx) => `${idx + 1}. ${s.name} (${s.durationMinutes} min)
           {/* Costing Summary */}
           <div className="p-4 rounded-xl bg-stone-900/60 print:bg-white border border-stone-800 print:border-black text-xs font-mono">
             <div className="flex justify-between items-center text-stone-300 print:text-black">
-              <span>Custo Total do Lote: <strong>R$ {costing.totalBatchCost.toFixed(2)}</strong></span>
-              <span>Custo Unitário: <strong>R$ {costing.unitTotalCost.toFixed(2)}</strong></span>
+              <span>Custo Total da Receita: <strong>R$ {costing.totalBatchCost.toFixed(2)}</strong></span>
+              <span>Custo por Unidade: <strong>R$ {costing.unitTotalCost.toFixed(2)}</strong></span>
               <span className="text-emerald-400 print:text-black font-bold">
                 Preço de Venda Sugerido ({recipe.costing.markupMultiplier}x): R$ {costing.suggestedSalePriceMarkup.toFixed(2)}
               </span>

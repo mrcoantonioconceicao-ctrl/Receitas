@@ -264,8 +264,8 @@ export const TroubleshootingTab: React.FC<TroubleshootingTabProps> = ({
       {filteredIssues.length === 0 && (
         <div className="text-center py-12 bg-stone-900 border border-stone-800 rounded-2xl p-6">
           <ShieldAlert className="w-8 h-8 text-stone-400 mx-auto mb-2" />
-          <p className="text-sm text-stone-300 font-medium">Nenhuma anomalia encontrada para essa busca.</p>
-          <p className="text-xs text-stone-400 mt-1">Utilize o campo de Investigador Forense acima para consultar a IA diretamente.</p>
+          <p className="text-sm text-stone-300 font-medium">Nenhuma dúvida parecida encontrada.</p>
+          <p className="text-xs text-stone-400 mt-1">Escreva o que aconteceu na caixinha lá em cima para perguntar diretamente à Vovó.</p>
         </div>
       )}
     </div>

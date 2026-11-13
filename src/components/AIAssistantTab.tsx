@@ -1,18 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Recipe } from '../types';
-import { 
-  Bot, 
-  Send, 
-  Sparkles, 
-  Loader2, 
-  Zap, 
-  Layers, 
-  Scale, 
-  Thermometer, 
-  DollarSign, 
-  ClipboardCopy, 
+import { normalizeQuickRecipe } from '../utils/bakersMath';
+import { findPresetRecipeMatch } from '../utils/recipeMatcher';
+import {
+  Send,
+  Loader2,
+  Zap,
+  ClipboardCopy,
   Check,
-  ArrowRight
+  AlertCircle,
 } from 'lucide-react';
 
 interface AIAssistantTabProps {
@@ -39,7 +35,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Olá! Sou o DoughCraft, seu assistente e amigo para pães e bolos caseiros deliciosos.\n\nMinha missão é descomplicar a cozinha com receitas práticas e fáceis:\n• Digite apenas o nome do que você quer fazer (ex: "pão caseiro", "bolo de fubá", "pão doce", "pão de forma") e eu monto a receita completa para 1.000g (1 kg) de farinha, com medidas exatas em gramas e ingredientes simples de mercado;\n• Quer mudar algo? Basta me pedir (ex: "faz metade com 500g", "deixa mais fofinho", "troca o óleo por manteiga") que eu recalculo tudo e entrego a receita inteira atualizada na hora!\n• Passos fáceis e diretos (misturar, sovar, descansar e assar).\n\nO que vamos assar hoje?`,
+      content: `Olá! Sou o DoughCraft, seu assistente carinhoso para pães e bolos caseiros perfeitos.\n\nMinha missão é descomplicar a cozinha com receitas práticas e fáceis:\n• Digite apenas o nome do que você quer fazer (ex: "pão caseiro", "bolo de fubá", "rosca doce", "pão de forma") e eu monto a receita completa na medida prática de 500g de farinha (rende 2 pães médios ou 1 bolo), já com xícaras, colheres e gramas exatas;\n• Quer mudar algo? Basta me pedir (ex: "dobra para 1 kg", "faz metade com 250g", "deixa mais fofinho", "troca o óleo por manteiga") que eu recalculo tudinho e entrego a receita inteira atualizada na hora!\n• Passo a passo bem mastigado (água morninha, sova carinhosa, descanso dentro do forno desligado e ponto certo de assar).\n\nO que vamos assar hoje?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -48,6 +44,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [importingId, setImportingId] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +77,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
     setMessages((prev) => [...prev, userMsg]);
     setInputMessage('');
     setIsLoading(true);
+    setImportError(null);
 
     try {
       const response = await fetch('/api/gemini/chat', {
@@ -112,13 +110,13 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Erro na resposta do DoughCraft Core.');
+        throw new Error(data.error || 'Erro ao conversar com o assistente.');
       }
 
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
         role: 'assistant',
-        content: data.text || 'Processamento concluído sem texto retornado.',
+        content: data.text || 'Receita preparada sem texto retornado.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -127,7 +125,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
       const errorMsg: ChatMessage = {
         id: `err-${Date.now()}`,
         role: 'assistant',
-        content: `ERRO DE PROCESSAMENTO: ${err.message || 'Falha na comunicação com o servidor.'}`,
+        content: `Ops, tive um probleminha de conexão: ${err.message || 'Falha na comunicação com o servidor.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -142,9 +140,30 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const extractRecipeTopic = (msgIndex: number, fallbackContent: string): string => {
+    for (let i = msgIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'user' && messages[i].content.trim()) {
+        return messages[i].content.trim().slice(0, 80);
+      }
+    }
+    const firstHeading = fallbackContent
+      .split('\n')
+      .map((line) => line.replace(/^[#*\s-]+/, '').trim())
+      .find((line) => line.length > 3 && !line.toLowerCase().startsWith('olá'));
+    return firstHeading?.slice(0, 60) || currentRecipe.name;
+  };
+
   // Quick import from chat to workbench
   const handleImportToWorkbench = async (productKeyword: string, msgId: string) => {
     if (!onLoadRecipeToWorkbench) return;
+    setImportError(null);
+
+    const presetMatch = findPresetRecipeMatch(productKeyword);
+    if (presetMatch) {
+      onLoadRecipeToWorkbench(presetMatch.recipe, presetMatch.activeReformulationQuestion);
+      return;
+    }
+
     setImportingId(msgId);
     try {
       const response = await fetch('/api/gemini/quick-formulate', {
@@ -153,71 +172,20 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
         body: JSON.stringify({ productName: productKeyword }),
       });
       const data = await response.json();
-
-      const baseFlourWeight = 1000;
-      const formattedIngredients = (data.ingredients || []).map((ing: any, idx: number) => ({
-        id: `ing-${Date.now()}-${idx}`,
-        name: ing.name,
-        category: ing.category || 'other',
-        percentage: ing.percentage ?? 0,
-        weight: ing.weight ?? Math.round((baseFlourWeight * (ing.percentage || 0)) / 100),
-        isFlour: ing.isFlour ?? false,
-        isPreferment: ing.isPreferment ?? false,
-        prefermentHydration: ing.prefermentHydration,
-        costPerKg: ing.costPerKg ?? 5.0,
-        notes: ing.notes,
-      }));
-
-      const flourIdx = formattedIngredients.findIndex((i: any) => i.isFlour || i.category === 'flour');
-      if (flourIdx >= 0) {
-        formattedIngredients[flourIdx].weight = 1000;
-        formattedIngredients[flourIdx].percentage = 100;
-        formattedIngredients[flourIdx].isFlour = true;
+      if (!response.ok) {
+        throw new Error(data.error || 'Não foi possível carregar na bancada.');
       }
 
-      const newRec: Recipe = {
-        id: `rec-${Date.now()}`,
-        name: data.name || productKeyword,
-        type: data.type || 'bread',
-        category: data.category || 'Formulação Rápida',
-        description: data.description || 'Fórmula calibrada para 1.000g de farinha base.',
-        baseFlourWeight: 1000,
-        targetUnits: data.targetUnits || 2,
-        targetBakedWeightPerUnit: data.targetBakedWeightPerUnit || 700,
-        ingredients: formattedIngredients,
-        climate: {
-          roomTemp: data.climate?.roomTemp ?? 24,
-          flourTemp: data.climate?.flourTemp ?? 22,
-          desiredDoughTemp: data.climate?.desiredDoughTemp ?? 25,
-          prefermentTemp: data.climate?.prefermentTemp ?? 22,
-          hasPreferment: data.climate?.hasPreferment ?? false,
-          relativeHumidity: data.climate?.relativeHumidity ?? 65,
-          mixerType: data.climate?.mixerType || 'spiral_slow',
-          frictionFactor: data.climate?.frictionFactor ?? 5,
-          tapWaterTemp: data.climate?.tapWaterTemp ?? 20,
-        },
-        costing: {
-          bakeLossPercentage: data.costing?.bakeLossPercentage ?? 14,
-          packagingCostPerUnit: data.costing?.packagingCostPerUnit ?? 1.5,
-          energyGasCostPerBatch: data.costing?.energyGasCostPerBatch ?? 5.0,
-          laborOverheadPercentage: data.costing?.laborOverheadPercentage ?? 18,
-          markupMultiplier: data.costing?.markupMultiplier ?? 3.5,
-          targetMarginPercent: data.costing?.targetMarginPercent ?? 70,
-        },
-        steps: (data.steps || []).map((st: any, idx: number) => ({
-          id: `step-${Date.now()}-${idx}`,
-          name: st.name,
-          durationMinutes: st.durationMinutes ?? 15,
-          temperature: st.temperature,
-          description: st.description,
-          criticalControlPoint: st.criticalControlPoint ?? 'Controle térmico.',
-        })),
-      };
+      const newRec = normalizeQuickRecipe(data, productKeyword, 500);
 
-      onLoadRecipeToWorkbench(newRec, data.activeReformulationQuestion || 'Fórmula carregada na bancada com 1kg de farinha.');
+      onLoadRecipeToWorkbench(
+        newRec,
+        data.activeReformulationQuestion ||
+          `Receita carregada na bancada com ${Math.round(newRec.baseFlourWeight)}g de farinha!`
+      );
     } catch (e: any) {
       console.error(e);
-      alert('Erro ao carregar na bancada: ' + e.message);
+      setImportError('Erro ao carregar na bancada: ' + (e.message || 'Tente novamente.'));
     } finally {
       setImportingId(null);
     }
@@ -225,11 +193,11 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
 
   const smartDefaultsPicks = [
     'Pão caseiro fofinho',
+    'Cuca de uva com farofinha',
     'Bolo de fubá cremoso',
+    'Cuca de banana',
     'Pão de forma macio',
-    'Pão doce de padaria',
-    'Bolo de cenoura fofinho',
-    'Quero fazer metade (500g)',
+    'Quero dobrar a receita (1 kg de farinha)',
   ];
 
   return (
@@ -238,7 +206,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         <span className="text-[11px] text-stone-400 shrink-0 font-medium flex items-center gap-1">
           <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-          Pedir Receita (1kg):
+          Pedir Receita (500g):
         </span>
         {smartDefaultsPicks.map((pick, idx) => (
           <button
@@ -254,7 +222,11 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
         <span className="text-stone-700">|</span>
 
         <button
-          onClick={() => handleSendMessage(`Como deixar meu pão caseiro mais fofinho e macio por mais dias? Me passe a receita atualizada com as gramas exatas.`)}
+          onClick={() =>
+            handleSendMessage(
+              `Como deixar meu pão caseiro mais fofinho e macio por mais dias? Me passe a receita atualizada com xícaras e gramas exatas.`
+            )
+          }
           disabled={isLoading}
           className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-300 text-xs font-medium border border-stone-800 hover:border-stone-700 whitespace-nowrap transition shrink-0"
         >
@@ -262,11 +234,28 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
         </button>
       </div>
 
+      {importError && (
+        <div className="p-3 bg-red-950/40 border border-red-900/50 rounded-xl text-xs text-red-300 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+          <span>{importError}</span>
+        </div>
+      )}
+
       {/* Chat Messages Log */}
       <div className="flex-1 bg-stone-900 border border-stone-800 rounded-2xl p-4 sm:p-6 overflow-y-auto space-y-4">
-        {messages.map((msg) => {
+        {messages.map((msg, idx) => {
           const isUser = msg.role === 'user';
-          const hasTableOrFormula = !isUser && (msg.content.includes('|') || msg.content.includes('1000g') || msg.content.includes('100%'));
+          const lower = msg.content.toLowerCase();
+          const hasTableOrFormula =
+            !isUser &&
+            msg.id !== 'welcome' &&
+            (msg.content.includes('|') ||
+              lower.includes('500g') ||
+              lower.includes('1000g') ||
+              lower.includes('1.000g') ||
+              lower.includes('1 kg') ||
+              lower.includes('o que você vai precisar') ||
+              msg.content.includes('100%'));
 
           return (
             <div
@@ -305,16 +294,18 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
 
                 {msg.content}
 
-                {/* If formula detected in assistant response, offer 1-click import */}
+                {/* If recipe detected in assistant response, offer 1-click import */}
                 {hasTableOrFormula && onLoadRecipeToWorkbench && (
-                  <div className="mt-3 pt-3 border-t border-stone-800/80 flex items-center justify-between">
-                    <span className="text-[11px] text-stone-400 font-mono">
-                      Deseja abrir esta formulação completa na bancada interativa?
+                  <div className="mt-3 pt-3 border-t border-stone-800/80 flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-stone-400 font-sans">
+                      Quer abrir esta receita na bancada para ajustar medidas e custos?
                     </span>
                     <button
-                      onClick={() => handleImportToWorkbench(msg.content.slice(0, 40), msg.id)}
+                      onClick={() =>
+                        handleImportToWorkbench(extractRecipeTopic(idx, msg.content), msg.id)
+                      }
                       disabled={importingId === msg.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold transition shadow-sm"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold transition shadow-sm shrink-0"
                     >
                       {importingId === msg.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -333,7 +324,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
         {isLoading && (
           <div className="flex items-center gap-2 text-xs text-amber-400 bg-stone-950/80 border border-stone-800 rounded-xl p-3 w-fit">
             <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-            <span className="font-mono">DoughCraft Core calculando cinética e formulação (Smart Defaults 1kg)...</span>
+            <span className="font-sans">Preparando sua receita caseira com medidas exatas (base 500g)...</span>
           </div>
         )}
 
@@ -352,7 +343,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
           type="text"
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
-          placeholder='Digite apenas o nome do produto (ex: "Pão caseiro", "Bolo de fubá") ou pergunte...'
+          placeholder='Digite o que quer assar (ex: "Pão caseiro", "Bolo de fubá") ou peça um ajuste...'
           disabled={isLoading}
           className="flex-1 bg-transparent px-4 py-2.5 text-xs sm:text-sm text-white placeholder-stone-400 focus:outline-none"
         />

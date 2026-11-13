@@ -66,7 +66,7 @@ export const AuditModal: React.FC<AuditModalProps> = ({
 
       setAuditText(data.analysis);
     } catch (err: any) {
-      setError(err.message || 'Erro de conexão com o DoughCraft Core.');
+      setError(err.message || 'Erro de conexão com o assistente DoughCraft.');
     } finally {
       setLoading(false);
     }
