@@ -10,6 +10,11 @@ import paoMinutoImg from '../assets/images/pao_de_minuto_1794874818117.jpg';
 import paoDeLoImg from '../assets/images/pao_de_lo_classico_1794874983385.jpg';
 import negaMalucaImg from '../assets/images/bolo_nega_maluca_1794874984081.jpg';
 import prestigioImg from '../assets/images/bolo_prestigio_coco_1794874983017.jpg';
+import boloMilhoImg from '../assets/images/bolo_milho_cremoso_1794917058712.jpg';
+import massaPodreImg from '../assets/images/massa_podre_torta_1794917059668.jpg';
+import massaLasanhaImg from '../assets/images/massa_lasanha_fresca_1794917060207.jpg';
+import boloLaranjaImg from '../assets/images/bolo_de_laranja_1794917061724.jpg';
+import boloCenouraImg from '../assets/images/bolo_de_cenoura_1794917061263.jpg';
 
 interface RecipePhotoProps {
   recipe: Recipe;
@@ -25,6 +30,11 @@ export function resolveRecipePhotoUrl(recipe: Recipe): string | undefined {
     .replace(/[\u0300-\u036f]/g, '');
 
   if (lower.includes('prestigio')) return prestigioImg;
+  if (lower.includes('cenoura')) return boloCenouraImg;
+  if (lower.includes('laranja')) return boloLaranjaImg;
+  if (lower.includes('milho')) return boloMilhoImg;
+  if (lower.includes('massa podre') || lower.includes('empada')) return massaPodreImg;
+  if (lower.includes('lasanha')) return massaLasanhaImg;
   if (lower.includes('nega maluca') || lower.includes('bolo de chocolate') || lower.includes('chocolate')) {
     return negaMalucaImg;
   }

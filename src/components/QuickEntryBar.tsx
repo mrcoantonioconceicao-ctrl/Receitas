@@ -31,14 +31,17 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
 
   const quickPicks = [
     'Pão Caseiro',
+    'Rosca Doce',
+    'Cuca de Uva',
     'Pão de Ló',
     'Nega Maluca',
     'Prestígio',
-    'Cuca de Uva',
-    'Cuca de Banana',
     'Bolo de Fubá',
-    'Pão de Forma Macio',
-    'Rosca Doce',
+    'Bolo de Milho Cremoso',
+    'Bolo de Laranja',
+    'Bolo de Cenoura',
+    'Massa Podre',
+    'Massa de Lasanha',
   ];
 
   const handleQuickFormulate = async (nameToUse?: string) => {
@@ -113,7 +116,7 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
           </div>
         </div>
         <span className="text-[11px] text-stone-400">
-          Digite o nome (ex: "Pão de ló", "Nega maluca", "Prestígio", "Cuca de uva") para receber a receita inteira recalculada
+          Digite o nome (ex: "Pão caseiro", "Bolo de cenoura", "Massa podre", "Lasanha", "Rosca doce") para ver a receita completa
         </span>
       </div>
 
@@ -131,7 +134,7 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
             type="text"
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
-            placeholder='Digite o que quer assar (ex: "Pão de ló", "Nega maluca", "Prestígio", "Cuca", "Bolo de fubá")...'
+            placeholder='Digite o que quer assar (ex: "Bolo de cenoura", "Bolo de milho cremoso", "Massa podre", "Lasanha")...'
             disabled={isLoading}
             className="w-full bg-stone-950 border border-stone-700 rounded-xl pl-9 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-stone-400 focus:outline-none focus:border-amber-500"
           />

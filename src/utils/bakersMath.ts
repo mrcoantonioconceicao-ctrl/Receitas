@@ -308,6 +308,10 @@ export function calculateCoherentTargetUnits(
     return totalRawWeight > 1900 ? Math.max(1, Math.round(totalRawWeight / 1350)) : 1;
   }
 
+  if (recipeType === 'pastry') {
+    return totalRawWeight > 1150 ? Math.max(2, Math.round(totalRawWeight / 750)) : 1;
+  }
+
   // Small dinner rolls / pastries (e.g. Pão de Minuto: ~45g-110g per roll)
   if (currentUnits && currentUnits >= 6 && previousRawWeight && previousRawWeight > 0) {
     const prevPerUnit = previousRawWeight / currentUnits;
@@ -409,15 +413,26 @@ export function normalizeQuickRecipe(
     normalizedFallback.includes('cuca') ||
     normalizedFallback.includes('pao de lo') ||
     normalizedFallback.includes('nega maluca') ||
-    normalizedFallback.includes('prestigio');
+    normalizedFallback.includes('prestigio') ||
+    normalizedFallback.includes('milho cremoso') ||
+    normalizedFallback.includes('laranja') ||
+    normalizedFallback.includes('cenoura');
+
+  const looksLikePastry =
+    normalizedFallback.includes('massa podre') ||
+    normalizedFallback.includes('empada') ||
+    normalizedFallback.includes('empad') ||
+    normalizedFallback.includes('torta') ||
+    normalizedFallback.includes('lasanha') ||
+    normalizedFallback.includes('macarrao');
 
   const recipeType: 'bread' | 'pastry' | 'cake' =
-    data?.type || (looksLikeCake ? 'cake' : 'bread');
+    data?.type || (looksLikeCake ? 'cake' : looksLikePastry ? 'pastry' : 'bread');
   const totalRawWeight = normalizedIngredients.reduce((s, i) => s + i.weight, 0);
   const rawAiUnits = Number(data?.targetUnits) || 0;
   const rawPerAiUnit = rawAiUnits > 0 && totalRawWeight > 0 ? totalRawWeight / rawAiUnits : 0;
 
-  // Accept AI unit count only if each piece has a coherent weight (>= 40g for rolls, >= 200g for regular bread/cake)
+  // Accept AI unit count only if each piece has a coherent weight (>= 40g for rolls, >= 200g for regular bread/cake/pastry)
   const minPieceWeight = recipeType === 'cake' ? 300 : rawAiUnits >= 6 ? 40 : 200;
   const targetUnits =
     rawAiUnits >= 1 && rawPerAiUnit >= minPieceWeight && rawPerAiUnit <= 1500
@@ -624,8 +639,18 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
     return `~${cups.toFixed(1).replace('.', ',')} xícara(s) de chá`;
   }
 
-  // Líquidos (Água / Leite — 1 xícara = 240ml)
-  if (category === 'liquid' || lowerName.includes('água') || lowerName.includes('agua') || lowerName.includes('leite')) {
+  // Líquidos (Água / Leite / Suco — 1 xícara = 240ml)
+  if (
+    category === 'liquid' ||
+    lowerName.includes('água') ||
+    lowerName.includes('agua') ||
+    lowerName.includes('leite') ||
+    lowerName.includes('suco')
+  ) {
+    if (weight <= 75) {
+      const spoons = Math.max(1, Math.round(weight / 15));
+      return `~${spoons} colher${spoons > 1 ? 'es' : ''} de sopa`;
+    }
     if (Math.abs(weight - 300) < 15) return '~1 xícara e 1/4 (ou 1 copo e meio americano)';
     if (Math.abs(weight - 240) < 15) return '~1 xícara de chá cheia (240ml)';
     if (Math.abs(weight - 200) < 15) return '~1 copo americano (200ml)';
@@ -635,22 +660,60 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
     return `~${cups.toFixed(1).replace('.', ',')} xícara${cups >= 1.5 ? 's' : ''} de chá`;
   }
 
-  // Gorduras (Óleo / Manteiga / Banha — 1 xícara óleo = 220g, 1 colher sopa = 15g)
-  if (category === 'fat' || lowerName.includes('óleo') || lowerName.includes('oleo') || lowerName.includes('manteiga') || lowerName.includes('banha')) {
+  // Gorduras (Óleo / Manteiga / Azeite / Banha — 1 xícara óleo = 220g, 1 colher sopa = 15g)
+  if (
+    category === 'fat' ||
+    lowerName.includes('óleo') ||
+    lowerName.includes('oleo') ||
+    lowerName.includes('manteiga') ||
+    lowerName.includes('azeite') ||
+    lowerName.includes('banha')
+  ) {
     if (weight <= 18) return '~1 colher de sopa';
     if (weight <= 34) return '~2 colheres de sopa cheias';
     if (Math.abs(weight - 40) <= 7) return '~3 colheres de sopa cheias (ou 1/4 de xícara)';
     if (Math.abs(weight - 55) <= 8) return '~1/4 de xícara (ou 3 a 4 colheres de sopa)';
     if (Math.abs(weight - 110) <= 12) return '~meia xícara de chá';
+    if (Math.abs(weight - 160) <= 15) return '~3/4 de xícara de chá';
     if (Math.abs(weight - 220) <= 15) return '~1 xícara de chá cheia';
+    if (Math.abs(weight - 250) <= 15) return '~1 xícara e 1/4 (ou 1 tablete e 1/4 de 200g)';
     const spoons = (weight / 15).toFixed(1).replace('.', ',');
     return `~${spoons} colheres de sopa`;
   }
 
-  // Ovos
+  // Gemas e Ovos
+  if (lowerName.includes('gema') && !lowerName.includes('açúcar cristal') && !lowerName.includes('acucar cristal')) {
+    const yolks = Math.max(1, Math.round(weight / 20));
+    return `~${yolks} gema${yolks > 1 ? 's' : ''}`;
+  }
   if (category === 'egg' || lowerName.includes('ovo')) {
     const eggs = Math.max(1, Math.round(weight / 50));
     return `~${eggs} ovo${eggs > 1 ? 's' : ''} médio${eggs > 1 ? 's' : ''}`;
+  }
+
+  // Milho verde (sem confundir com fubá/amido)
+  if (lowerName.includes('milho') && !lowerName.includes('fubá') && !lowerName.includes('fuba') && !lowerName.includes('amido')) {
+    const cans = weight / 170;
+    if (Math.abs(cans - 1) <= 0.25) return '1 latinha escorrida (ou ~1 xícara cheia)';
+    if (Math.abs(cans - 2) <= 0.35) return '2 latinhas escorridas (ou ~2 xícaras)';
+    return `~${(weight / 160).toFixed(1).replace('.', ',')} xícara(s) de chá de milho`;
+  }
+
+  // Cenoura
+  if (lowerName.includes('cenoura')) {
+    const carrots = Math.max(1, Math.round(weight / 90));
+    return `~${carrots} cenoura${carrots > 1 ? 's' : ''} média${carrots > 1 ? 's' : ''} picada${carrots > 1 ? 's' : ''}`;
+  }
+
+  // Laranja fruta
+  if (lowerName.includes('laranja') && !lowerName.includes('suco')) {
+    const oranges = Math.max(1, Math.round(weight / 160));
+    return `~${oranges} laranja${oranges > 1 ? 's' : ''} descascada${oranges > 1 ? 's' : ''} sem sementes`;
+  }
+
+  // Gema + açúcar cristal para pincelar rosca
+  if (lowerName.includes('gema') && (lowerName.includes('açúcar') || lowerName.includes('acucar'))) {
+    return '1 gema batida + 2 colheres de sopa de açúcar cristal';
   }
 
   // Frutas (Uva e Banana para Cuca)

@@ -35,13 +35,19 @@ export interface PresetMatchResult {
 }
 
 /**
- * Recognizes the core homemade recipes typed in "O que você quer assar hoje?":
- * 1. "Cuca" (or "cuca de uva" / "cuca de banana") -> Cuca Alemã Caseira (500g farinha base, farofinha doce crocante + frutas)
- * 2. "Bolo de fubá" -> Bolo de Fubá Cremoso
- * 3. "Pão de ló" -> Pão de Ló Clássico leve e fofinho
- * 4. "Prestígio" -> Bolo Prestígio (massa de chocolate + recheio e cobertura cremosa de coco)
- * 5. "Nega maluca" / "Bolo de chocolate" -> Nega Maluca com água fervendo e calda quente de chocolate
- * 6. "Pão caseiro" -> Pão Caseiro Fofinho (500g farinha base, 2 pães médios)
+ * Reconhecimento completo do cardápio da casa digitado em "O que você quer assar hoje?":
+ * 1. "Cuca" (uva ou banana)
+ * 2. "Prestígio"
+ * 3. "Bolo de cenoura" (antes de chocolate por causa da calda)
+ * 4. "Nega maluca" / "Bolo de chocolate"
+ * 5. "Bolo de laranja"
+ * 6. "Bolo de milho cremoso" / "Bolo de milho"
+ * 7. "Bolo de fubá"
+ * 8. "Pão de ló" (antes de pão caseiro)
+ * 9. "Rosca doce" / "Rosca"
+ * 10. "Massa podre"
+ * 11. "Massa de lasanha" / "Lasanha"
+ * 12. "Pão caseiro" / "Pão"
  */
 export function findPresetRecipeMatch(rawQuery: string): PresetMatchResult | null {
   const q = normalizeSearchText(rawQuery);
@@ -128,7 +134,19 @@ export function findPresetRecipeMatch(rawQuery: string): PresetMatchResult | nul
     }
   }
 
-  // 3. Regra da Nega Maluca / Bolo de Chocolate de Liquidificador
+  // 3. Regra do Bolo de Cenoura (antes de chocolate para não confundir pela calda)
+  if (/\bcenoura\b/.test(q)) {
+    const baseCenoura = MASTER_RECIPES.find((r) => r.id === 'bolo-cenoura-calda-chocolate');
+    if (baseCenoura) {
+      return {
+        recipe: cloneRecipeWithFreshIds(baseCenoura),
+        activeReformulationQuestion:
+          'Seu Bolo de Cenoura Fofinho da Vovó com calda caseira de chocolate já está na bancada! Quer dobrar a receita para uma assadeira grande ou ajustar a calda?',
+      };
+    }
+  }
+
+  // 4. Regra da Nega Maluca / Bolo de Chocolate de Liquidificador
   if (
     /\bnega\s*maluca\b/.test(q) ||
     /\bbolo\s+(de\s+)?chocolate\b/.test(q) ||
@@ -145,19 +163,31 @@ export function findPresetRecipeMatch(rawQuery: string): PresetMatchResult | nul
     }
   }
 
-  // 4. Regra do Pão de Ló Clássico (antes de pão caseiro)
-  if (/\bpao\s+(de\s+)?lo\b/.test(q)) {
-    const basePaoDeLo = MASTER_RECIPES.find((r) => r.id === 'pao-de-lo-classico-vovo');
-    if (basePaoDeLo) {
+  // 5. Regra do Bolo de Laranja
+  if (/\blaranja\b/.test(q)) {
+    const baseLaranja = MASTER_RECIPES.find((r) => r.id === 'bolo-laranja-fofinho-vovo');
+    if (baseLaranja) {
       return {
-        recipe: cloneRecipeWithFreshIds(basePaoDeLo),
+        recipe: cloneRecipeWithFreshIds(baseLaranja),
         activeReformulationQuestion:
-          'Seu Pão de Ló Clássico (leve, alto e fofinho para rechear) está pronto na bancada com todas as medidas! Quer dobrar para uma fôrma alta de festa ou quer sugestões de caldinha e recheio?',
+          'Seu Bolo de Laranja Fofinho da Vovó (com laranja fresca e calda de suco de laranja com açúcar) está prontinho na bancada! Quer dobrar a receita ou fazer metade?',
       };
     }
   }
 
-  // 5. Regra do Bolo de Fubá -> Bolo de Fubá Cremoso
+  // 6. Regra do Bolo de Milho Cremoso
+  if (/\bmilho\b/.test(q)) {
+    const baseMilho = MASTER_RECIPES.find((r) => r.id === 'bolo-milho-cremoso-vovo');
+    if (baseMilho) {
+      return {
+        recipe: cloneRecipeWithFreshIds(baseMilho),
+        activeReformulationQuestion:
+          'Seu Bolo de Milho Cremoso de liquidificador (com milho verde, leite, fubá, queijo ralado e manteiga) já está na bancada! Quer dobrar a receita para uma festa ou trocar o queijo?',
+      };
+    }
+  }
+
+  // 7. Regra do Bolo de Fubá -> Bolo de Fubá Cremoso
   if (
     /\bbolo\s+(de\s+)?fuba\b/.test(q) ||
     q === 'fuba' ||
@@ -174,7 +204,78 @@ export function findPresetRecipeMatch(rawQuery: string): PresetMatchResult | nul
     }
   }
 
-  // 6. Regra do Pão Caseiro -> Pão Caseiro Fofinho (500g base, 2 pães médios)
+  // 8. Regra do Pão de Ló Clássico (antes de pão caseiro)
+  if (/\bpao\s+(de\s+)?lo\b/.test(q)) {
+    const basePaoDeLo = MASTER_RECIPES.find((r) => r.id === 'pao-de-lo-classico-vovo');
+    if (basePaoDeLo) {
+      return {
+        recipe: cloneRecipeWithFreshIds(basePaoDeLo),
+        activeReformulationQuestion:
+          'Seu Pão de Ló Clássico (leve, alto e fofinho para rechear) está pronto na bancada com todas as medidas! Quer dobrar para uma fôrma alta de festa ou quer sugestões de caldinha e recheio?',
+      };
+    }
+  }
+
+  // 9. Regra da Rosca Doce Trançada
+  if (/\brosca\b/.test(q)) {
+    const baseRosca = MASTER_RECIPES.find((r) => r.id === 'rosca-doce-trancada');
+    if (baseRosca) {
+      return {
+        recipe: cloneRecipeWithFreshIds(baseRosca),
+        activeReformulationQuestion:
+          'Sua Rosca Doce Trançada da Vovó (com massa fofinha de leite, ovos, açúcar e manteiga, pincelada com gema e açúcar cristal) já está na bancada! Quer dobrar para 1 kg de farinha ou adicionar erva-doce?',
+      };
+    }
+  }
+
+  // 10. Regra da Massa Podre (empadas e tortas)
+  if (/\bmassa\s+podre\b/.test(q) || /\bempadao?\b/.test(q)) {
+    const baseMassaPodre = MASTER_RECIPES.find((r) => r.id === 'massa-podre-empada-torta');
+    if (baseMassaPodre) {
+      return {
+        recipe: cloneRecipeWithFreshIds(baseMassaPodre),
+        activeReformulationQuestion:
+          'Sua Massa Podre Amanteigada (para empadas e tortas salgadas) já está na bancada! Quer fazer metade com 250g de farinha ou sugestões de recheio cremoso de frango?',
+      };
+    }
+  }
+
+  // 11. Regra da Massa de Lasanha / Lasanha
+  if (/\blasanha\b/.test(q) || /\bmacarrao\s+caseiro\b/.test(q)) {
+    const baseLasanha = MASTER_RECIPES.find((r) => r.id === 'massa-lasanha-caseira-fresca');
+    if (baseLasanha) {
+      return {
+        recipe: cloneRecipeWithFreshIds(baseLasanha),
+        activeReformulationQuestion:
+          'Sua Massa Caseira Fresca de Lasanha (aberta no rolo com farinha, ovos e azeite) está prontinha na bancada! Quer fazer metade para uma travessa pequena ou dobrar?',
+      };
+    }
+  }
+
+  // 12. Regra do Pão de Forma ou Pão de Minuto se digitados direto
+  if (/\bpao\s+(de\s+)?forma\b/.test(q)) {
+    const baseForma = MASTER_RECIPES.find((r) => r.id === 'pao-de-forma-caseiro');
+    if (baseForma) {
+      return {
+        recipe: cloneRecipeWithFreshIds(baseForma),
+        activeReformulationQuestion:
+          'Seu Pão de Forma Macio da Vovó (500g de farinha, rende 2 pães de fôrma) está pronto na bancada! Quer dobrar para 1 kg ou fazer metade?',
+      };
+    }
+  }
+
+  if (/\bpao\s+(de\s+)?minuto\b/.test(q)) {
+    const baseMinuto = MASTER_RECIPES.find((r) => r.id === 'pao-de-minuto-rapido');
+    if (baseMinuto) {
+      return {
+        recipe: cloneRecipeWithFreshIds(baseMinuto),
+        activeReformulationQuestion:
+          'Seu Pão de Minuto Rápido (rende 12 pãezinhos sem esperar crescer) está pronto na bancada! Quer dobrar para fazer 24 pãezinhos?',
+      };
+    }
+  }
+
+  // 13. Regra do Pão Caseiro -> Pão Caseiro Fofinho (500g base, 2 pães médios)
   if (
     q === 'pao' ||
     q === 'pao caseiro' ||

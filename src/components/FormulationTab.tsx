@@ -265,11 +265,27 @@ export const FormulationTab: React.FC<FormulationTabProps> = ({
 
   const safeUnits = Math.max(1, recipe.targetUnits || 1);
   const rawPerUnit = Math.round(totalRawDoughWeight / safeUnits);
-  const isCuca = recipe.name.toLowerCase().includes('cuca');
+  const lowerName = recipe.name.toLowerCase();
+  const isCuca = lowerName.includes('cuca');
+  const isRosca = lowerName.includes('rosca');
+  const isLasanha = lowerName.includes('lasanha');
+
   const unitWord = isCuca
     ? safeUnits === 1
       ? 'cuca'
       : 'cucas'
+    : isRosca
+    ? safeUnits === 1
+      ? 'rosca'
+      : 'roscas'
+    : isLasanha
+    ? safeUnits === 1
+      ? 'travessa de lasanha'
+      : 'travessas de lasanha'
+    : recipe.type === 'pastry'
+    ? safeUnits === 1
+      ? 'torta / massa'
+      : 'tortas / massas'
     : recipe.type === 'cake'
     ? safeUnits === 1
       ? 'bolo'
@@ -280,10 +296,12 @@ export const FormulationTab: React.FC<FormulationTabProps> = ({
 
   const typeLabel = isCuca
     ? 'Cuca Caseira'
+    : isRosca
+    ? 'Rosca Caseira'
     : recipe.type === 'cake'
     ? 'Bolo Caseiro'
     : recipe.type === 'pastry'
-    ? 'Massa Doce / Rosca'
+    ? 'Massa Salgada Caseira'
     : 'Pão Caseiro';
 
   return (

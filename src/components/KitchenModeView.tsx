@@ -167,12 +167,27 @@ export const KitchenModeView: React.FC<KitchenModeViewProps> = ({
   const hydration = calculateHydrationMetrics(recipe.ingredients, recipe.baseFlourWeight);
   const ddt = calculateDDT(recipe.climate, hydration.formulaWaterWeight);
 
-  const isCuca = recipe.name.toLowerCase().includes('cuca');
+  const lowerName = recipe.name.toLowerCase();
+  const isCuca = lowerName.includes('cuca');
+  const isRosca = lowerName.includes('rosca');
+  const isLasanha = lowerName.includes('lasanha');
   const safeUnits = Math.max(1, recipe.targetUnits || 1);
   const unitWord = isCuca
     ? safeUnits === 1
       ? 'cuca grande'
       : 'cucas'
+    : isRosca
+    ? safeUnits === 1
+      ? 'rosca'
+      : 'roscas'
+    : isLasanha
+    ? safeUnits === 1
+      ? 'travessa de lasanha'
+      : 'travessas de lasanha'
+    : recipe.type === 'pastry'
+    ? safeUnits === 1
+      ? 'torta / massa'
+      : 'tortas / massas'
     : recipe.type === 'cake'
     ? safeUnits === 1
       ? 'bolo'
@@ -626,11 +641,16 @@ export const KitchenModeView: React.FC<KitchenModeViewProps> = ({
                 </p>
               )}
 
-              {recipe.type !== 'cake' && hydration.formulaWaterWeight > 0 && (
+              {recipe.type === 'bread' && hydration.formulaWaterWeight > 0 && (
                 <p className={`mt-3 break-words font-bold ${theme.accentText} ${scale.ingNote}`}>
                   {ddt.needsIce
                     ? `Dia quente na cozinha (${recipe.climate.roomTemp}°C): use água bem geladinha (~${Math.max(4, Math.round(ddt.waterTempTarget))}°C) para a massa não amolecer.`
                     : `Água ou leite morninho ideal (~${Math.round(ddt.waterTempTarget)}°C): teste no pulso, suave como banho de bebê.`}
+                </p>
+              )}
+              {recipe.type === 'pastry' && lowerName.includes('massa podre') && (
+                <p className={`mt-3 break-words font-bold ${theme.accentText} ${scale.ingNote}`}>
+                  Segredo da massa podre: use manteiga e água bem geladas e junte só com a ponta dos dedos, sem sovar.
                 </p>
               )}
             </div>

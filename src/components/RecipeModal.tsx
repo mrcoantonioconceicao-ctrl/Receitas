@@ -69,16 +69,17 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar pão, bolo ou rosca..."
+              placeholder="Buscar pão, bolo, rosca ou massa..."
               className="w-full bg-stone-900 border border-stone-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-stone-400 focus:outline-none focus:border-amber-500"
             />
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {[
               { id: 'all', label: 'Todas as Receitas' },
-              { id: 'bread', label: 'Pães Caseiros' },
+              { id: 'bread', label: 'Pães & Roscas' },
               { id: 'cake', label: 'Bolos de Vó' },
+              { id: 'pastry', label: 'Massas Salgadas' },
             ].map((t) => (
               <button
                 key={t.id}
@@ -140,6 +141,18 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                         ? item.targetUnits === 1
                           ? 'cuca grande'
                           : 'cucas'
+                        : item.name.toLowerCase().includes('rosca')
+                        ? item.targetUnits === 1
+                          ? 'rosca'
+                          : 'roscas'
+                        : item.name.toLowerCase().includes('lasanha')
+                        ? item.targetUnits === 1
+                          ? 'travessa de lasanha'
+                          : 'travessas de lasanha'
+                        : item.type === 'pastry'
+                        ? item.targetUnits === 1
+                          ? 'torta / massa'
+                          : 'tortas / massas'
                         : item.type === 'cake'
                         ? item.targetUnits === 1
                           ? 'bolo'
