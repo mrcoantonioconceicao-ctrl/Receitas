@@ -15,6 +15,7 @@ import massaPodreImg from '../assets/images/massa_podre_torta_1794917059668.jpg'
 import massaLasanhaImg from '../assets/images/massa_lasanha_fresca_1794917060207.jpg';
 import boloLaranjaImg from '../assets/images/bolo_de_laranja_1794917061724.jpg';
 import boloCenouraImg from '../assets/images/bolo_de_cenoura_1794917061263.jpg';
+import empadaoFrangoImg from '../assets/images/empadao_de_frango_1794922115990.jpg';
 
 interface RecipePhotoProps {
   recipe: Recipe;
@@ -32,6 +33,9 @@ export function resolveRecipePhotoUrl(recipe: Recipe): string | undefined {
   if (lower.includes('prestigio')) return prestigioImg;
   if (lower.includes('cenoura')) return boloCenouraImg;
   if (lower.includes('laranja')) return boloLaranjaImg;
+  if (lower.includes('empadao') || lower.includes('pastelao') || lower.includes('torta de frango')) {
+    return empadaoFrangoImg;
+  }
   if (lower.includes('milho')) return boloMilhoImg;
   if (lower.includes('massa podre') || lower.includes('empada')) return massaPodreImg;
   if (lower.includes('lasanha')) return massaLasanhaImg;

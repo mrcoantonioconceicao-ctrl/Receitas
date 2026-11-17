@@ -171,6 +171,11 @@ export const KitchenModeView: React.FC<KitchenModeViewProps> = ({
   const isCuca = lowerName.includes('cuca');
   const isRosca = lowerName.includes('rosca');
   const isLasanha = lowerName.includes('lasanha');
+  const isEmpadao =
+    lowerName.includes('empadao') ||
+    lowerName.includes('empadão') ||
+    lowerName.includes('pastelao') ||
+    lowerName.includes('pastelão');
   const safeUnits = Math.max(1, recipe.targetUnits || 1);
   const unitWord = isCuca
     ? safeUnits === 1
@@ -184,6 +189,10 @@ export const KitchenModeView: React.FC<KitchenModeViewProps> = ({
     ? safeUnits === 1
       ? 'travessa de lasanha'
       : 'travessas de lasanha'
+    : isEmpadao
+    ? safeUnits === 1
+      ? 'empadão grande'
+      : 'empadões grandes'
     : recipe.type === 'pastry'
     ? safeUnits === 1
       ? 'torta / massa'

@@ -102,7 +102,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2 font-mono">
             <span className="text-stone-300 font-bold">DoughCraft</span>
-            <span className="text-amber-400 font-sans font-medium">• Seu Assistente Amigo de Pães e Bolos Caseiros</span>
+            <span className="text-amber-400 font-sans font-medium">• Seu Assistente Amigo de Pães, Bolos, Tortas e Massas Caseiras</span>
           </div>
           <div>
             Receitas simples, claras e em gramas exatas com ingredientes de mercado

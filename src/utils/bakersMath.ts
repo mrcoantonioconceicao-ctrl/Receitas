@@ -309,7 +309,11 @@ export function calculateCoherentTargetUnits(
   }
 
   if (recipeType === 'pastry') {
-    return totalRawWeight > 1150 ? Math.max(2, Math.round(totalRawWeight / 750)) : 1;
+    if (currentUnits && previousRawWeight && previousRawWeight > 0) {
+      const prevPerUnit = previousRawWeight / currentUnits;
+      return Math.max(1, Math.round(totalRawWeight / prevPerUnit));
+    }
+    return totalRawWeight > 2500 ? Math.max(2, Math.round(totalRawWeight / 1200)) : 1;
   }
 
   // Small dinner rolls / pastries (e.g. Pão de Minuto: ~45g-110g per roll)
@@ -421,7 +425,7 @@ export function normalizeQuickRecipe(
   const looksLikePastry =
     normalizedFallback.includes('massa podre') ||
     normalizedFallback.includes('empada') ||
-    normalizedFallback.includes('empad') ||
+    normalizedFallback.includes('pastelao') ||
     normalizedFallback.includes('torta') ||
     normalizedFallback.includes('lasanha') ||
     normalizedFallback.includes('macarrao');
@@ -434,8 +438,9 @@ export function normalizeQuickRecipe(
 
   // Accept AI unit count only if each piece has a coherent weight (>= 40g for rolls, >= 200g for regular bread/cake/pastry)
   const minPieceWeight = recipeType === 'cake' ? 300 : rawAiUnits >= 6 ? 40 : 200;
+  const maxPieceWeight = recipeType === 'pastry' || recipeType === 'cake' ? 2600 : 1500;
   const targetUnits =
-    rawAiUnits >= 1 && rawPerAiUnit >= minPieceWeight && rawPerAiUnit <= 1500
+    rawAiUnits >= 1 && rawPerAiUnit >= minPieceWeight && rawPerAiUnit <= maxPieceWeight
       ? Math.round(rawAiUnits)
       : calculateCoherentTargetUnits(recipeType, totalRawWeight);
 
@@ -697,6 +702,34 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
     if (Math.abs(cans - 1) <= 0.25) return '1 latinha escorrida (ou ~1 xícara cheia)';
     if (Math.abs(cans - 2) <= 0.35) return '2 latinhas escorridas (ou ~2 xícaras)';
     return `~${(weight / 160).toFixed(1).replace('.', ',')} xícara(s) de chá de milho`;
+  }
+
+  // Requeijão cremoso
+  if (lowerName.includes('requeij')) {
+    const cups = weight / 200;
+    if (Math.abs(cups - 1) <= 0.15) return '1 copo ou potinho (200g)';
+    return `~${cups.toFixed(1).replace('.', ',')} copo(s) de 200g`;
+  }
+
+  // Frango desfiado (sem confundir com caldo de frango que já cai em líquidos)
+  if (lowerName.includes('frango') && !lowerName.includes('caldo')) {
+    const cups = Math.max(1, Math.round(weight / 150));
+    return `~${cups} xícara${cups > 1 ? 's' : ''} de chá bem cheia${cups > 1 ? 's' : ''}`;
+  }
+
+  // Molho / Extrato de tomate
+  if (lowerName.includes('tomate')) {
+    if (weight <= 120) {
+      const spoons = Math.max(1, Math.round(weight / 15));
+      return `~${spoons} colher${spoons > 1 ? 'es' : ''} de sopa`;
+    }
+    return `~${(weight / 240).toFixed(1).replace('.', ',')} xícara(s) de chá`;
+  }
+
+  // Cebola / Temperos caseiros
+  if (lowerName.includes('cebola')) {
+    if (weight >= 70 && weight <= 140) return '1 cebola média + 2 dentes de alho + cheiro-verde';
+    return `~${Math.max(1, Math.round(weight / 100))} cebola(s) média(s) + temperinhos`;
   }
 
   // Cenoura

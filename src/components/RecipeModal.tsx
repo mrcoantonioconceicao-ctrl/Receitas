@@ -50,7 +50,7 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-white">Caderno de Receitas da Vovó</h3>
-              <p className="text-xs text-stone-400">Pães e bolos caseiros com medidas em gramas e xícaras para você fazer em casa</p>
+              <p className="text-xs text-stone-400">Pães, bolos, tortas e massas caseiras com medidas em gramas e xícaras para fazer em casa</p>
             </div>
           </div>
           <button
@@ -79,7 +79,7 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
               { id: 'all', label: 'Todas as Receitas' },
               { id: 'bread', label: 'Pães & Roscas' },
               { id: 'cake', label: 'Bolos de Vó' },
-              { id: 'pastry', label: 'Massas Salgadas' },
+              { id: 'pastry', label: 'Tortas & Massas Salgadas' },
             ].map((t) => (
               <button
                 key={t.id}
@@ -149,6 +149,13 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                         ? item.targetUnits === 1
                           ? 'travessa de lasanha'
                           : 'travessas de lasanha'
+                        : item.name.toLowerCase().includes('empadao') ||
+                          item.name.toLowerCase().includes('empadão') ||
+                          item.name.toLowerCase().includes('pastelao') ||
+                          item.name.toLowerCase().includes('pastelão')
+                        ? item.targetUnits === 1
+                          ? 'empadão grande'
+                          : 'empadões grandes'
                         : item.type === 'pastry'
                         ? item.targetUnits === 1
                           ? 'torta / massa'

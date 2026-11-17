@@ -35,7 +35,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Olá! Sou o DoughCraft, seu assistente carinhoso para pães, bolos e massas caseiras perfeitas.\n\nMinha missão é descomplicar a cozinha com receitas práticas e fáceis:\n• Digite apenas o nome do que você quer fazer (ex: "pão caseiro", "rosca doce", "bolo de cenoura", "bolo de laranja", "bolo de milho cremoso", "massa podre", "lasanha") e eu monto a receita completa já com xícaras, colheres e gramas exatas;\n• Quer mudar algo? Basta me pedir (ex: "dobra para 1 kg", "faz metade com 250g", "deixa mais fofinho", "troca o óleo por manteiga") que eu recalculo tudinho e entrego a receita inteira atualizada na hora!\n• Passo a passo bem mastigado com os truques da vovó.\n\nO que vamos fazer na cozinha hoje?`,
+      content: `Olá! Sou o DoughCraft, seu assistente carinhoso para pães, bolos, tortas e massas caseiras perfeitas.\n\nMinha missão é descomplicar a cozinha com receitas práticas e fáceis:\n• Digite apenas o nome do que você quer fazer (ex: "pão caseiro", "empadão de frango", "rosca doce", "bolo de cenoura", "bolo de laranja", "bolo de milho cremoso", "massa podre", "lasanha") e eu monto a receita completa já com xícaras, colheres e gramas exatas;\n• Quer mudar algo? Basta me pedir (ex: "dobra para 1 kg", "faz metade com 250g", "deixa mais fofinho", "troca o óleo por manteiga") que eu recalculo tudinho e entrego a receita inteira atualizada na hora!\n• Passo a passo bem mastigado com os truques da vovó.\n\nO que vamos fazer na cozinha hoje?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -193,6 +193,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
 
   const smartDefaultsPicks = [
     'Pão caseiro fofinho',
+    'Empadão de frango com milho',
     'Rosca doce trançada',
     'Bolo de cenoura com calda de chocolate',
     'Bolo de laranja fofinho',
@@ -350,7 +351,7 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
           type="text"
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
-          placeholder='Digite o que quer fazer (ex: "Bolo de cenoura", "Massa podre", "Lasanha", "Rosca doce") ou peça um ajuste...'
+          placeholder='Digite o que quer fazer (ex: "Empadão de frango", "Bolo de cenoura", "Massa podre", "Lasanha") ou peça um ajuste...'
           disabled={isLoading}
           className="flex-1 bg-transparent px-4 py-2.5 text-xs sm:text-sm text-white placeholder-stone-400 focus:outline-none"
         />

@@ -45,9 +45,10 @@ export interface PresetMatchResult {
  * 7. "Bolo de fubá"
  * 8. "Pão de ló" (antes de pão caseiro)
  * 9. "Rosca doce" / "Rosca"
- * 10. "Massa podre"
- * 11. "Massa de lasanha" / "Lasanha"
- * 12. "Pão caseiro" / "Pão"
+ * 10. "Empadão de frango" / "Pastelão de frango" (antes de massa podre)
+ * 11. "Massa podre"
+ * 12. "Massa de lasanha" / "Lasanha"
+ * 13. "Pão caseiro" / "Pão"
  */
 export function findPresetRecipeMatch(rawQuery: string): PresetMatchResult | null {
   const q = normalizeSearchText(rawQuery);
@@ -228,14 +229,35 @@ export function findPresetRecipeMatch(rawQuery: string): PresetMatchResult | nul
     }
   }
 
-  // 10. Regra da Massa Podre (empadas e tortas)
-  if (/\bmassa\s+podre\b/.test(q) || /\bempadao?\b/.test(q)) {
+  // 10. Regra do Empadão de Frango / Pastelão de Frango (antes de massa podre)
+  if (
+    /\bempadao\b/.test(q) ||
+    /\bpastelao\b/.test(q) ||
+    /\btorta\s+(salgada\s+)?(de\s+)?frango\b/.test(q)
+  ) {
+    const baseEmpadao = MASTER_RECIPES.find((r) => r.id === 'empadao-frango-massa-podre');
+    if (baseEmpadao) {
+      return {
+        recipe: cloneRecipeWithFreshIds(baseEmpadao),
+        activeReformulationQuestion:
+          'Seu Empadão de Frango Cremoso com Milho na verdadeira massa podre amanteigada já está na bancada! Quer fazer metade da receita para uma travessinha pequena ou adaptar os temperos do recheio?',
+      };
+    }
+  }
+
+  // 11. Regra da Massa Podre (empadas, empadinhas e tortas)
+  if (
+    /\bmassa\s+podre\b/.test(q) ||
+    /\bempadinhas?\b/.test(q) ||
+    /\bempadas?\b/.test(q) ||
+    /\bmassa\s+(de\s+)?torta\b/.test(q)
+  ) {
     const baseMassaPodre = MASTER_RECIPES.find((r) => r.id === 'massa-podre-empada-torta');
     if (baseMassaPodre) {
       return {
         recipe: cloneRecipeWithFreshIds(baseMassaPodre),
         activeReformulationQuestion:
-          'Sua Massa Podre Amanteigada (para empadas e tortas salgadas) já está na bancada! Quer fazer metade com 250g de farinha ou sugestões de recheio cremoso de frango?',
+          'Sua Massa Podre Amanteigada (para empadões, empadinhas e tortas) já está na bancada! Quer fazer metade com 250g de farinha ou carregar a receita completa do Empadão de Frango?',
       };
     }
   }

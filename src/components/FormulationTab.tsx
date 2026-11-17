@@ -269,6 +269,11 @@ export const FormulationTab: React.FC<FormulationTabProps> = ({
   const isCuca = lowerName.includes('cuca');
   const isRosca = lowerName.includes('rosca');
   const isLasanha = lowerName.includes('lasanha');
+  const isEmpadao =
+    lowerName.includes('empadao') ||
+    lowerName.includes('empadão') ||
+    lowerName.includes('pastelao') ||
+    lowerName.includes('pastelão');
 
   const unitWord = isCuca
     ? safeUnits === 1
@@ -282,6 +287,10 @@ export const FormulationTab: React.FC<FormulationTabProps> = ({
     ? safeUnits === 1
       ? 'travessa de lasanha'
       : 'travessas de lasanha'
+    : isEmpadao
+    ? safeUnits === 1
+      ? 'empadão grande'
+      : 'empadões grandes'
     : recipe.type === 'pastry'
     ? safeUnits === 1
       ? 'torta / massa'
@@ -298,6 +307,8 @@ export const FormulationTab: React.FC<FormulationTabProps> = ({
     ? 'Cuca Caseira'
     : isRosca
     ? 'Rosca Caseira'
+    : isEmpadao
+    ? 'Torta Salgada Caseira'
     : recipe.type === 'cake'
     ? 'Bolo Caseiro'
     : recipe.type === 'pastry'
