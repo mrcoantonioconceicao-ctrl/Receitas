@@ -1,8 +1,138 @@
 import React, { useState } from 'react';
 import { convertYeast, calculateTangzhong } from '../utils/bakersMath';
-import { RotateCcw, Droplet, Flame, Scale, Info } from 'lucide-react';
+import { RotateCcw, Flame, Scale, Info, Utensils } from 'lucide-react';
+
+type MeasureUnitId = 'cup' | 'tbsp' | 'tsp' | 'american_glass';
+
+interface IngredientDensity {
+  label: string;
+  group: 'Secos & Farinhas' | 'Açúcares & Doces' | 'Gorduras' | 'Líquidos' | 'Fermentos & Sal';
+  gramsPerCup240ml: number;
+  tip: string;
+}
+
+const MEASURE_UNITS: Record<
+  MeasureUnitId,
+  { label: string; shortLabel: string; ml: number }
+> = {
+  cup: { label: 'Xícara de Chá (240 ml)', shortLabel: 'xícara(s) de chá', ml: 240 },
+  tbsp: { label: 'Colher de Sopa (15 ml)', shortLabel: 'colher(es) de sopa', ml: 15 },
+  tsp: { label: 'Colher de Chá (5 ml)', shortLabel: 'colher(es) de chá', ml: 5 },
+  american_glass: { label: 'Copo Americano (200 ml)', shortLabel: 'copo(s) americano(s)', ml: 200 },
+};
+
+const INGREDIENT_DENSITIES: Record<string, IngredientDensity> = {
+  flour: {
+    label: 'Farinha de Trigo Comum (sem fermento)',
+    group: 'Secos & Farinhas',
+    gramsPerCup240ml: 125,
+    tip: 'Encha a xícara sem apertar e passe as costas de uma faca para nivelar (4 xícaras = 500g).',
+  },
+  fuba: {
+    label: 'Fubá Mimoso / Amido de Milho (Maizena)',
+    group: 'Secos & Farinhas',
+    gramsPerCup240ml: 120,
+    tip: 'Bem soltinho e levinho — 1 xícara dá cerca de 120g.',
+  },
+  flour_whole: {
+    label: 'Farinha Integral ou de Centeio',
+    group: 'Secos & Farinhas',
+    gramsPerCup240ml: 115,
+    tip: 'Um pouquinho mais leve no volume por causa das casquinhas do trigo.',
+  },
+  cocoa: {
+    label: 'Chocolate em Pó / Cacau em Pó',
+    group: 'Secos & Farinhas',
+    gramsPerCup240ml: 90,
+    tip: 'Bem fofinho e leve: 1 xícara cheia pesa cerca de 90g (ou ~6g por colher de sopa).',
+  },
+  coconut: {
+    label: 'Coco Ralado Seco',
+    group: 'Secos & Farinhas',
+    gramsPerCup240ml: 80,
+    tip: '1 pacotinho de 100g equivale a cerca de 1 xícara e 1/4 de chá.',
+  },
+  sugar_refined: {
+    label: 'Açúcar Refinado ou Cristal',
+    group: 'Açúcares & Doces',
+    gramsPerCup240ml: 200,
+    tip: 'Bem mais pesado que a farinha: 1 xícara cheia pesa 200g.',
+  },
+  sugar_brown: {
+    label: 'Açúcar Mascavo (apertadinho)',
+    group: 'Açúcares & Doces',
+    gramsPerCup240ml: 220,
+    tip: 'Acomode levemente na xícara sem compactar demais.',
+  },
+  condensed_milk: {
+    label: 'Leite Condensado',
+    group: 'Açúcares & Doces',
+    gramsPerCup240ml: 310,
+    tip: 'Bem denso e cremoso: 1 lata ou caixinha padrão tem 395g (~305 ml).',
+  },
+  honey: {
+    label: 'Mel / Melado',
+    group: 'Açúcares & Doces',
+    gramsPerCup240ml: 340,
+    tip: 'Passe um fiozinho de óleo na colher ou xícara antes para o mel escorregar inteirinho.',
+  },
+  butter: {
+    label: 'Manteiga ou Margarina (Macia)',
+    group: 'Gorduras',
+    gramsPerCup240ml: 225,
+    tip: '1 colher de sopa bem cheia pesa aproximadamente 14g a 15g.',
+  },
+  oil: {
+    label: 'Óleo de Cozinha / Azeite',
+    group: 'Gorduras',
+    gramsPerCup240ml: 220,
+    tip: 'O óleo boia na água porque é um pouco mais leve: 240 ml pesam cerca de 220g.',
+  },
+  water_milk: {
+    label: 'Água / Leite Integral',
+    group: 'Líquidos',
+    gramsPerCup240ml: 240,
+    tip: 'Na água e no leite, 1 ml vale praticamente 1g (1 xícara = 240 ml = 240g).',
+  },
+  cream: {
+    label: 'Creme de Leite',
+    group: 'Líquidos',
+    gramsPerCup240ml: 240,
+    tip: '1 caixinha padrão tem 200g (aproximadamente 200 ml).',
+  },
+  yeast_chem: {
+    label: 'Fermento Químico em Pó (de Bolo)',
+    group: 'Fermentos & Sal',
+    gramsPerCup240ml: 224,
+    tip: '1 colher de sopa rasa (ou a tampinha do pote) = ~14g; 1 colher de chá = ~5g.',
+  },
+  yeast_dry: {
+    label: 'Fermento Biológico Seco (de Pão)',
+    group: 'Fermentos & Sal',
+    gramsPerCup240ml: 160,
+    tip: '1 colher de sopa cheia = 10g (1 pacotinho); 1 colher de chá = ~3,3g.',
+  },
+  salt: {
+    label: 'Sal Refinado de Cozinha',
+    group: 'Fermentos & Sal',
+    gramsPerCup240ml: 288,
+    tip: 'Bem pesadinho: 1 colher de chá rasa pesa cerca de 6g; 1 colher de sopa rasa pesa ~18g.',
+  },
+};
+
+function formatMeasureNumber(val: number): string {
+  if (val >= 100) return String(Math.round(val));
+  if (val >= 10) return (Math.round(val * 10) / 10).toString().replace('.', ',');
+  return (Math.round(val * 10) / 10).toString().replace('.', ',');
+}
 
 export const ToolsTab: React.FC = () => {
+  // Household Measure -> Grams & Milliliters converter
+  const [measureIngredient, setMeasureIngredient] = useState<string>('flour');
+  const [measureUnit, setMeasureUnit] = useState<MeasureUnitId>('cup');
+  const [measureQty, setMeasureQty] = useState<number>(2);
+  const [measureQtyDraft, setMeasureQtyDraft] = useState<string>('2');
+
   // Yeast converter state (only everyday market yeasts in UI)
   const [yeastAmount, setYeastAmount] = useState<number>(5);
   const [yeastType, setYeastType] = useState<'instant_dry' | 'active_dry' | 'fresh'>('instant_dry');
@@ -22,53 +152,33 @@ export const ToolsTab: React.FC = () => {
       ? Math.max(0, ((rawDoughWeight - bakedDoughWeight) / rawDoughWeight) * 100)
       : 0;
 
-  // Cup to grams converter state
-  const [cupItem, setCupItem] = useState<string>('flour');
-  const [cupQuantity, setCupQuantity] = useState<number>(2);
+  const selectedIngredient = INGREDIENT_DENSITIES[measureIngredient] || INGREDIENT_DENSITIES.flour;
+  const selectedUnit = MEASURE_UNITS[measureUnit];
+  const safeQty = Math.max(0, measureQty);
+  const totalMl = safeQty * selectedUnit.ml;
+  const totalGrams = totalMl * (selectedIngredient.gramsPerCup240ml / 240);
 
-  const ingredientDensities: Record<
-    string,
-    { label: string; gramsPerCup: number; unitDesc: string }
-  > = {
-    flour: {
-      label: 'Farinha de Trigo (sem fermento)',
-      gramsPerCup: 125,
-      unitDesc: '1 xícara = 125g (4 xícaras = 500g)',
-    },
-    flour_rye: {
-      label: 'Farinha de Centeio ou Integral',
-      gramsPerCup: 115,
-      unitDesc: '1 xícara = 115g',
-    },
-    sugar_refined: {
-      label: 'Açúcar Cristal / Refinado',
-      gramsPerCup: 200,
-      unitDesc: '1 xícara = 200g',
-    },
-    sugar_brown: {
-      label: 'Açúcar Mascavo (apertadinho)',
-      gramsPerCup: 220,
-      unitDesc: '1 xícara = 220g',
-    },
-    butter: {
-      label: 'Manteiga ou Margarina',
-      gramsPerCup: 225,
-      unitDesc: '1 xícara = 225g (1 colher de sopa = 15g)',
-    },
-    water_milk: {
-      label: 'Água / Leite Integral',
-      gramsPerCup: 240,
-      unitDesc: '1 xícara = 240g (240ml)',
-    },
-    oil: {
-      label: 'Óleo de Cozinha / Azeite',
-      gramsPerCup: 220,
-      unitDesc: '1 xícara = 220g (1 colher de sopa = 15g)',
-    },
-    honey: { label: 'Mel / Melado', gramsPerCup: 340, unitDesc: '1 xícara = 340g' },
+  // Reference equivalences for the selected ingredient
+  const gramsPerCup = selectedIngredient.gramsPerCup240ml;
+  const gramsPerHalfCup = gramsPerCup / 2;
+  const gramsPerTbsp = (gramsPerCup * 15) / 240;
+  const gramsPerTsp = (gramsPerCup * 5) / 240;
+
+  const fractionPresets: { label: string; value: number }[] = [
+    { label: '1/4', value: 0.25 },
+    { label: '1/3', value: 0.33 },
+    { label: '1/2', value: 0.5 },
+    { label: '1', value: 1 },
+    { label: '1 e 1/2', value: 1.5 },
+    { label: '2', value: 2 },
+    { label: '3', value: 3 },
+    { label: '4', value: 4 },
+  ];
+
+  const handleSelectQuickQty = (val: number) => {
+    setMeasureQty(val);
+    setMeasureQtyDraft(String(val).replace('.', ','));
   };
-
-  const calculatedGrams = (ingredientDensities[cupItem]?.gramsPerCup || 125) * cupQuantity;
 
   return (
     <div className="space-y-6">
@@ -80,14 +190,224 @@ export const ToolsTab: React.FC = () => {
           <span>Conversores Práticos</span>
         </div>
         <h2 className="text-xl font-bold text-white mt-1">
-          Conversor de Xícaras, Fermentos e Truques de Maciez
+          Conversor de Medidas Caseiras, Fermentos e Truques de Maciez
         </h2>
         <p className="text-xs text-stone-400 mt-1 max-w-2xl">
-          Converta xícaras em gramas, troque fermento de pacotinho por tablete fresco da padaria e calcule o mingauzinho caseiro que deixa o pão fofinho por vários dias.
+          Converta xícaras, colheres de sopa e colheres de chá para gramas e mililitros de acordo com cada ingrediente, troque fermento de pacotinho por tablete fresco e calcule o mingauzinho caseiro.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Featured Tool: Household Measure Converter (Xícaras, Colheres -> Gramas & ml) */}
+      <section className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800 pb-4">
+          <div>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Utensils className="w-5 h-5 text-amber-400" />
+              <span>Conversor de Medidas Caseiras (Xícaras e Colheres → Gramas &amp; ml)</span>
+            </h3>
+            <p className="text-xs text-stone-400 mt-1">
+              Cada ingrediente tem um peso diferente: 1 xícara de farinha pesa 125g, enquanto 1 xícara de açúcar pesa 200g e 1 xícara de água pesa 240g (240ml).
+            </p>
+          </div>
+          <span className="text-[11px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg self-start sm:self-center shrink-0">
+            Padrão: 1 xícara = 240 ml
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Controls Column */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label
+                  htmlFor="converter-ingredient"
+                  className="text-xs font-semibold text-stone-300 block mb-1.5"
+                >
+                  1. Escolha o Ingrediente:
+                </label>
+                <select
+                  id="converter-ingredient"
+                  value={measureIngredient}
+                  onChange={(e) => setMeasureIngredient(e.target.value)}
+                  className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+                >
+                  {(
+                    [
+                      'Secos & Farinhas',
+                      'Açúcares & Doces',
+                      'Gorduras',
+                      'Líquidos',
+                      'Fermentos & Sal',
+                    ] as const
+                  ).map((groupName) => (
+                    <optgroup key={groupName} label={groupName}>
+                      {Object.entries(INGREDIENT_DENSITIES)
+                        .filter(([, item]) => item.group === groupName)
+                        .map(([key, item]) => (
+                          <option key={key} value={key}>
+                            {item.label}
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="converter-quantity"
+                  className="text-xs font-semibold text-stone-300 block mb-1.5"
+                >
+                  3. Quantidade:
+                </label>
+                <input
+                  id="converter-quantity"
+                  type="text"
+                  inputMode="decimal"
+                  value={measureQtyDraft}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setMeasureQtyDraft(raw);
+                    const normalized = parseFloat(raw.replace(',', '.'));
+                    if (!isNaN(normalized) && normalized >= 0) {
+                      setMeasureQty(normalized);
+                    }
+                  }}
+                  onBlur={() => setMeasureQtyDraft(String(measureQty).replace('.', ','))}
+                  className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-base font-mono text-amber-400 font-bold focus:outline-none focus:border-amber-500 tabular-nums"
+                />
+              </div>
+            </div>
+
+            {/* Measure Unit Picker */}
+            <div>
+              <span className="text-xs font-semibold text-stone-300 block mb-1.5">
+                2. Medida Caseira Usada na Receita:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(Object.keys(MEASURE_UNITS) as MeasureUnitId[]).map((unitId) => {
+                  const unit = MEASURE_UNITS[unitId];
+                  const active = measureUnit === unitId;
+                  return (
+                    <button
+                      key={unitId}
+                      type="button"
+                      onClick={() => setMeasureUnit(unitId)}
+                      aria-pressed={active}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-bold border text-left transition ${
+                        active
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                          : 'bg-stone-950/70 border-stone-800 text-stone-300 hover:border-stone-600'
+                      }`}
+                    >
+                      <div className="font-bold leading-snug">
+                        {unit.label.split(' (')[0]}
+                      </div>
+                      <div className="text-[11px] font-mono text-stone-400 mt-0.5">
+                        {unit.ml} ml
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick Fraction / Count Chips */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] text-stone-400 font-medium mr-1">
+                Atalhos rápidos:
+              </span>
+              {fractionPresets.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => handleSelectQuickQty(preset.value)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition ${
+                    Math.abs(measureQty - preset.value) < 0.02
+                      ? 'bg-amber-500 text-stone-950 border-amber-500'
+                      : 'bg-stone-950 text-stone-300 border-stone-800 hover:border-amber-500/40'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Grandma Practical Tip */}
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-100 flex items-start gap-2">
+              <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-amber-300">Dica da Vovó:</strong> {selectedIngredient.tip}
+              </div>
+            </div>
+          </div>
+
+          {/* Results & Quick Equivalence Reference Column */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="bg-stone-950/80 border border-stone-800 rounded-2xl p-5 space-y-4">
+              <div className="text-xs text-stone-400 font-medium">
+                {String(safeQty).replace('.', ',')} {selectedUnit.shortLabel} de{' '}
+                <span className="text-white font-semibold">{selectedIngredient.label}</span>:
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 tabular-nums">
+                <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 text-center">
+                  <span className="text-[11px] uppercase tracking-wider text-stone-400 font-mono block">
+                    Peso na Balança
+                  </span>
+                  <div className="text-3xl font-extrabold font-mono text-amber-400 mt-1">
+                    {formatMeasureNumber(totalGrams)}{' '}
+                    <span className="text-base font-normal text-stone-400">g</span>
+                  </div>
+                </div>
+
+                <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 text-center">
+                  <span className="text-[11px] uppercase tracking-wider text-stone-400 font-mono block">
+                    Volume / Medidor
+                  </span>
+                  <div className="text-3xl font-extrabold font-mono text-cyan-400 mt-1">
+                    {formatMeasureNumber(totalMl)}{' '}
+                    <span className="text-base font-normal text-stone-400">ml</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Equivalence Breakdown Table for Selected Ingredient */}
+              <div className="pt-2 border-t border-stone-800 space-y-2 text-xs tabular-nums">
+                <div className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider font-mono">
+                  Referência rápida deste ingrediente:
+                </div>
+                <div className="flex items-center justify-between text-stone-300">
+                  <span>1 xícara de chá (240 ml)</span>
+                  <span className="font-mono font-bold text-white">
+                    {formatMeasureNumber(gramsPerCup)} g
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-stone-300">
+                  <span>1/2 xícara de chá (120 ml)</span>
+                  <span className="font-mono font-bold text-white">
+                    {formatMeasureNumber(gramsPerHalfCup)} g
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-stone-300">
+                  <span>1 colher de sopa (15 ml)</span>
+                  <span className="font-mono font-bold text-amber-300">
+                    {formatMeasureNumber(gramsPerTbsp)} g
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-stone-300">
+                  <span>1 colher de chá (5 ml)</span>
+                  <span className="font-mono font-bold text-cyan-300">
+                    {formatMeasureNumber(gramsPerTsp)} g
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Tool 1: Yeast Converter */}
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
           <div>
@@ -270,61 +590,6 @@ export const ToolsTab: React.FC = () => {
 
           <div className="mt-4 text-[11px] text-stone-400">
             Referência caseira: Pão de fôrma e bolos perdem cerca de 10%, e pão caseiro tradicional perde cerca de 12% do peso no forno.
-          </div>
-        </div>
-
-        {/* Tool 4: Cup Converter */}
-        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b border-stone-800 pb-3 mb-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Droplet className="w-4 h-4 text-cyan-400" />
-                <span>Conversor de Xícaras para Gramas</span>
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="text-xs text-stone-400 block mb-1">Ingrediente:</label>
-                <select
-                  value={cupItem}
-                  onChange={(e) => setCupItem(e.target.value)}
-                  className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-                >
-                  {Object.entries(ingredientDensities).map(([key, val]) => (
-                    <option key={key} value={key}>
-                      {val.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs text-stone-400 block mb-1">Quantas Xícaras:</label>
-                <input
-                  type="number"
-                  min="0.25"
-                  step="0.25"
-                  value={cupQuantity}
-                  onChange={(e) => setCupQuantity(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-sm font-mono text-cyan-400 font-bold focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="bg-stone-950/60 p-4 rounded-xl border border-stone-800 text-center tabular-nums">
-              <span className="text-xs text-stone-400 block">Peso Exato na Balança:</span>
-              <div className="text-3xl font-extrabold font-mono text-cyan-400 mt-1">
-                {Math.round(calculatedGrams)} g
-              </div>
-              <span className="text-xs text-stone-400 mt-1 block">
-                {ingredientDensities[cupItem]?.unitDesc}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-4 text-[11px] text-stone-400">
-            Dica da Vovó: xícaras variam bastante de tamanho em casa. Sempre que tiver uma balancinha de cozinha, pese em gramas para a receita ficar igualzinha todas as vezes.
           </div>
         </div>
       </div>

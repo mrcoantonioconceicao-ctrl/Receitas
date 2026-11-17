@@ -400,8 +400,19 @@ export function normalizeQuickRecipe(
     normalizedIngredients = rawIngredients;
   }
 
+  const normalizedFallback = fallbackName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const looksLikeCake =
+    normalizedFallback.includes('bolo') ||
+    normalizedFallback.includes('cuca') ||
+    normalizedFallback.includes('pao de lo') ||
+    normalizedFallback.includes('nega maluca') ||
+    normalizedFallback.includes('prestigio');
+
   const recipeType: 'bread' | 'pastry' | 'cake' =
-    data?.type || (fallbackName.toLowerCase().includes('bolo') ? 'cake' : 'bread');
+    data?.type || (looksLikeCake ? 'cake' : 'bread');
   const totalRawWeight = normalizedIngredients.reduce((s, i) => s + i.weight, 0);
   const rawAiUnits = Number(data?.targetUnits) || 0;
   const rawPerAiUnit = rawAiUnits > 0 && totalRawWeight > 0 ? totalRawWeight / rawAiUnits : 0;
@@ -422,7 +433,7 @@ export function normalizeQuickRecipe(
   return {
     id: `smart-${Date.now()}`,
     name: data?.name || fallbackName,
-    type: data?.type || (fallbackName.toLowerCase().includes('bolo') ? 'cake' : 'bread'),
+    type: recipeType,
     category: data?.category || 'Receita Tradicional de Vó',
     description:
       data?.description ||
@@ -581,6 +592,38 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
     return `~${cups.toFixed(1).replace('.', ',')} xícaras de chá`;
   }
 
+  // Leite condensado (1 lata/caixinha = 395g)
+  if (lowerName.includes('leite condensado') || lowerName.includes('condensado')) {
+    const cans = weight / 395;
+    if (Math.abs(cans - 1) < 0.12) return '1 lata ou caixinha (395g)';
+    if (Math.abs(cans - 0.5) < 0.1) return 'meia lata/caixinha (~200g)';
+    if (Math.abs(cans - 2) < 0.15) return '2 latas ou caixinhas';
+    return `~${cans.toFixed(1).replace('.', ',')} lata(s) de 395g`;
+  }
+
+  // Creme de leite (1 caixinha = 200g)
+  if (lowerName.includes('creme de leite')) {
+    const boxes = weight / 200;
+    if (Math.abs(boxes - 1) < 0.12) return '1 caixinha (200g)';
+    if (Math.abs(boxes - 0.5) < 0.1) return 'meia caixinha (~100g)';
+    if (Math.abs(boxes - 2) < 0.15) return '2 caixinhas (400g)';
+    return `~${boxes.toFixed(1).replace('.', ',')} caixinha(s) de 200g`;
+  }
+
+  // Chocolate em pó / Cacau / Achocolatado (1 xícara = ~90g, 1 colher sopa = ~10g)
+  if (lowerName.includes('chocolate') || lowerName.includes('cacau') || lowerName.includes('achocolatado')) {
+    if (weight < 35) {
+      const spoons = Math.max(1, Math.round(weight / 10));
+      return `~${spoons} colher${spoons > 1 ? 'es' : ''} de sopa`;
+    }
+    const cups = weight / 90;
+    if (Math.abs(cups - 1) < 0.15) return '~1 xícara de chá cheia';
+    if (Math.abs(cups - 0.5) < 0.12) return '~meia xícara de chá';
+    if (Math.abs(cups - 1.5) < 0.15) return '~1 xícara e meia de chá';
+    if (Math.abs(cups - 2) < 0.15) return '~2 xícaras de chá';
+    return `~${cups.toFixed(1).replace('.', ',')} xícara(s) de chá`;
+  }
+
   // Líquidos (Água / Leite — 1 xícara = 240ml)
   if (category === 'liquid' || lowerName.includes('água') || lowerName.includes('agua') || lowerName.includes('leite')) {
     if (Math.abs(weight - 300) < 15) return '~1 xícara e 1/4 (ou 1 copo e meio americano)';
@@ -635,7 +678,7 @@ export function getHouseholdMeasureEstimate(name: string, category: string, weig
   // Queijo Parmesão / Coco Ralado
   if (lowerName.includes('queijo') || lowerName.includes('parmes') || lowerName.includes('coco')) {
     if (Math.abs(weight - 50) <= 10) return '1 pacotinho (50g) ou ~meia xícara';
-    if (Math.abs(weight - 100) <= 15) return '~1 xícara de chá';
+    if (Math.abs(weight - 100) <= 15) return '1 pacotinho grande (100g) ou ~1 xícara de chá';
     return `~${(weight / 80).toFixed(1).replace('.', ',')} xícara(s)`;
   }
 

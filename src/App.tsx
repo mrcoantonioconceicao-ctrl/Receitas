@@ -12,6 +12,7 @@ import { ToolsTab } from './components/ToolsTab';
 import { RecipeModal } from './components/RecipeModal';
 import { AuditModal } from './components/AuditModal';
 import { TechnicalSheetModal } from './components/TechnicalSheetModal';
+import { KitchenModeView } from './components/KitchenModeView';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('formulation');
@@ -22,6 +23,7 @@ export default function App() {
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isTechnicalSheetOpen, setIsTechnicalSheetOpen] = useState(false);
+  const [isKitchenModeOpen, setIsKitchenModeOpen] = useState(false);
 
   const handleRecipeLoadedFromQuick = (recipe: Recipe) => {
     setCurrentRecipe(recipe);
@@ -41,6 +43,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenRecipeModal={() => setIsRecipeModalOpen(true)}
         onPrintTechnicalSheet={() => setIsTechnicalSheetOpen(true)}
+        onOpenKitchenMode={() => setIsKitchenModeOpen(true)}
       />
 
       {/* Main Container */}
@@ -56,6 +59,7 @@ export default function App() {
             recipe={currentRecipe}
             setRecipe={setCurrentRecipe}
             onOpenAudit={() => setIsAuditModalOpen(true)}
+            onOpenKitchenMode={() => setIsKitchenModeOpen(true)}
           />
         )}
 
@@ -124,6 +128,13 @@ export default function App() {
         onClose={() => setIsTechnicalSheetOpen(false)}
         recipe={currentRecipe}
       />
+
+      {isKitchenModeOpen && (
+        <KitchenModeView
+          recipe={currentRecipe}
+          onExit={() => setIsKitchenModeOpen(false)}
+        />
+      )}
     </div>
   );
 }

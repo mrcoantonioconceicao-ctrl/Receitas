@@ -78,6 +78,7 @@ export interface Recipe {
   costing: CostingSettings;
   steps: ProcessStep[];
   notes?: string;
+  imageUrl?: string;
 }
 
 export interface TroubleshootingIssue {

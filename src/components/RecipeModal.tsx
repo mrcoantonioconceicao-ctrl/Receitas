@@ -12,6 +12,7 @@ import {
   Check, 
   Search 
 } from 'lucide-react';
+import { RecipePhoto } from './RecipePhoto';
 
 interface RecipeModalProps {
   isOpen: boolean;
@@ -103,7 +104,12 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                 key={item.id}
                 className="bg-stone-950/80 border border-stone-800 hover:border-amber-500/50 rounded-xl p-4 transition group flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
-                <div className="space-y-1.5 flex-1">
+                <RecipePhoto
+                  recipe={item}
+                  className="w-full sm:w-40 aspect-[4/3] rounded-xl border border-stone-800 shrink-0"
+                />
+
+                <div className="space-y-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-semibold">
                       {item.category}

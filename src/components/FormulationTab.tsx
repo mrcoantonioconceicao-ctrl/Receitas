@@ -23,19 +23,28 @@ import {
   Clock,
   CheckCircle2,
   Table,
+  TabletSmartphone,
+  Volume2,
+  Pause,
+  Play,
+  Square,
 } from 'lucide-react';
 import { ASTVisualizer } from './ASTVisualizer';
+import { RecipePhoto } from './RecipePhoto';
+import { useRecipeSpeech, SpeechRate } from '../utils/useRecipeSpeech';
 
 interface FormulationTabProps {
   recipe: Recipe;
   setRecipe: React.Dispatch<React.SetStateAction<Recipe>>;
   onOpenAudit: () => void;
+  onOpenKitchenMode: () => void;
 }
 
 export const FormulationTab: React.FC<FormulationTabProps> = ({
   recipe,
   setRecipe,
   onOpenAudit,
+  onOpenKitchenMode,
 }) => {
   const [calcMode, setCalcMode] = useState<CalculationMode>('flour-basis');
   const [viewMode, setViewMode] = useState<'table' | 'ast'>('table');
@@ -67,6 +76,7 @@ export const FormulationTab: React.FC<FormulationTabProps> = ({
   }, [recipe.targetBakedWeightPerUnit]);
 
   const hydration = calculateHydrationMetrics(recipe.ingredients, recipe.baseFlourWeight);
+  const speech = useRecipeSpeech(recipe.steps, recipe.id);
 
   // Handle base flour weight change with coherent domestic unit yield
   const handleBaseFlourChange = (newFlour: number) => {
@@ -280,28 +290,44 @@ export const FormulationTab: React.FC<FormulationTabProps> = ({
     <div className="space-y-6">
       {/* Recipe Header & Sizing */}
       <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5 flex-1">
-            <div className="flex items-center gap-2 text-xs text-stone-400">
-              <span className="font-semibold text-amber-400">
-                {recipe.category || 'Receita Caseira'}
-              </span>
-              <span aria-hidden="true">·</span>
-              <span>{typeLabel}</span>
-            </div>
-            <input
-              type="text"
-              value={recipe.name}
-              onChange={(e) => setRecipe({ ...recipe, name: e.target.value })}
-              className="text-2xl font-bold bg-transparent text-white border-b border-transparent hover:border-stone-700 focus:border-amber-500 focus:outline-none w-full transition"
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1 min-w-0">
+            <RecipePhoto
+              recipe={recipe}
+              className="w-full sm:w-48 md:w-56 aspect-[4/3] rounded-xl border border-stone-800 shrink-0 shadow-sm"
             />
-            <p className="text-sm text-stone-400 line-clamp-2">{recipe.description}</p>
+
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-2 text-xs text-stone-400">
+                <span className="font-semibold text-amber-400">
+                  {recipe.category || 'Receita Caseira'}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span>{typeLabel}</span>
+              </div>
+              <input
+                type="text"
+                value={recipe.name}
+                onChange={(e) => setRecipe({ ...recipe, name: e.target.value })}
+                className="text-2xl font-bold bg-transparent text-white border-b border-transparent hover:border-stone-700 focus:border-amber-500 focus:outline-none w-full transition"
+              />
+              <p className="text-sm text-stone-400 line-clamp-2">{recipe.description}</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
+              type="button"
+              onClick={onOpenKitchenMode}
+              className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-stone-100 hover:bg-white text-stone-950 border border-stone-200 text-xs font-bold transition whitespace-nowrap shrink-0 shadow-sm"
+            >
+              <TabletSmartphone className="w-4 h-4" />
+              Modo Cozinha (Leitura Fácil)
+            </button>
+            <button
+              type="button"
               onClick={onOpenAudit}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition"
+              className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition whitespace-nowrap shrink-0"
             >
               <Sparkles className="w-4 h-4 text-amber-400" />
               Dicas da Vovó
@@ -809,48 +835,178 @@ export const FormulationTab: React.FC<FormulationTabProps> = ({
 
       {/* Production Process Steps Timeline */}
       <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-sm">
-        <h3 className="text-base font-bold text-white flex items-center gap-2 mb-4">
-          <Clock className="w-4 h-4 text-amber-400" />
-          <span>👩‍🍳 Como Fazer: Passo a Passo Detalhado da Vovó</span>
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-400" />
+              <span>👩‍🍳 Como Fazer: Passo a Passo Detalhado da Vovó</span>
+            </h3>
+            {speech.isPlaying && speech.currentStepIndex !== null && (
+              <p className="text-xs text-amber-300 font-semibold mt-1">
+                Lendo em voz alta: Passo {speech.currentStepIndex + 1} de {recipe.steps.length}
+              </p>
+            )}
+            {speech.errorMessage && (
+              <p className="text-xs text-red-400 mt-1">{speech.errorMessage}</p>
+            )}
+          </div>
+
+          {recipe.steps.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {speech.isPlaying ? (
+                <button
+                  type="button"
+                  onClick={speech.pause}
+                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold transition whitespace-nowrap"
+                >
+                  <Pause className="w-3.5 h-3.5" />
+                  Pausar Voz
+                </button>
+              ) : speech.isPaused ? (
+                <button
+                  type="button"
+                  onClick={speech.resume}
+                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold transition whitespace-nowrap"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  Continuar Voz
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => speech.speakAllFrom(0)}
+                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold transition whitespace-nowrap"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  Ouvir Preparo
+                </button>
+              )}
+
+              {(speech.isPlaying || speech.isPaused) && (
+                <button
+                  type="button"
+                  onClick={speech.stop}
+                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-semibold transition whitespace-nowrap"
+                >
+                  <Square className="w-3 h-3 fill-current" />
+                  Parar
+                </button>
+              )}
+
+              {speech.isSupported && (
+                <div
+                  className="inline-flex items-center bg-stone-950 border border-stone-800 rounded-xl p-0.5"
+                  role="group"
+                  aria-label="Velocidade da leitura"
+                >
+                  {(
+                    [
+                      { val: 0.85, label: '0,85x' },
+                      { val: 1, label: '1x' },
+                      { val: 1.15, label: '1,15x' },
+                    ] as { val: SpeechRate; label: string }[]
+                  ).map((sp) => (
+                    <button
+                      key={sp.val}
+                      type="button"
+                      onClick={() => speech.setRate(sp.val)}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold transition tabular-nums ${
+                        speech.rate === sp.val
+                          ? 'bg-amber-500 text-stone-950'
+                          : 'text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      {sp.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="space-y-3">
-          {recipe.steps.map((step, idx) => (
-            <div
-              key={step.id}
-              className="p-4 rounded-xl bg-stone-950/60 border border-stone-800/80 flex flex-col md:flex-row md:items-start justify-between gap-4"
-            >
-              <div className="flex items-start gap-3 flex-1">
-                <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 font-mono text-xs font-bold flex items-center justify-center shrink-0 border border-amber-500/30">
-                  {idx + 1}
-                </span>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-bold text-stone-200 text-sm">{step.name}</h4>
-                    {step.durationMinutes > 0 && (
-                      <span className="px-2 py-0.5 rounded bg-stone-800 text-stone-300 font-mono text-[11px]">
-                        {step.durationMinutes >= 60
-                          ? `${(step.durationMinutes / 60).toFixed(1)} h`
-                          : `${step.durationMinutes} min`}
-                      </span>
-                    )}
-                    {step.temperature && (
-                      <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono text-[11px] border border-amber-500/20">
-                        {step.temperature}
-                      </span>
+          {recipe.steps.map((step, idx) => {
+            const isSpeakingStep =
+              (speech.isPlaying || speech.isPaused) && speech.currentStepIndex === idx;
+            return (
+              <div
+                key={step.id}
+                className={`p-4 rounded-xl bg-stone-950/60 border flex flex-col md:flex-row md:items-start justify-between gap-4 transition ${
+                  isSpeakingStep ? 'border-amber-400 ring-1 ring-amber-400/60' : 'border-stone-800/80'
+                }`}
+              >
+                <div className="flex items-start gap-3 flex-1">
+                  <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 font-mono text-xs font-bold flex items-center justify-center shrink-0 border border-amber-500/30">
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-stone-200 text-sm">{step.name}</h4>
+                        {step.durationMinutes > 0 && (
+                          <span className="px-2 py-0.5 rounded bg-stone-800 text-stone-300 font-mono text-[11px]">
+                            {step.durationMinutes >= 60
+                              ? `${(step.durationMinutes / 60).toFixed(1)} h`
+                              : `${step.durationMinutes} min`}
+                          </span>
+                        )}
+                        {step.temperature && (
+                          <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono text-[11px] border border-amber-500/20">
+                            {step.temperature}
+                          </span>
+                        )}
+                      </div>
+
+                      {speech.isSupported && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isSpeakingStep && speech.isPlaying) {
+                              speech.pause();
+                            } else if (isSpeakingStep && speech.isPaused) {
+                              speech.resume();
+                            } else {
+                              speech.speakSingleStep(idx);
+                            }
+                          }}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition whitespace-nowrap shrink-0 ${
+                            isSpeakingStep
+                              ? 'bg-amber-500 text-stone-950 border-amber-400'
+                              : 'bg-stone-900 hover:bg-stone-800 text-stone-300 border-stone-700'
+                          }`}
+                        >
+                          {isSpeakingStep && speech.isPlaying ? (
+                            <>
+                              <Pause className="w-3 h-3" />
+                              Pausar
+                            </>
+                          ) : isSpeakingStep && speech.isPaused ? (
+                            <>
+                              <Play className="w-3 h-3" />
+                              Continuar
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-3 h-3" />
+                              Ouvir passo
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-stone-300 mt-1 leading-relaxed">{step.description}</p>
+                    {step.criticalControlPoint && (
+                      <div className="mt-2 text-[11px] text-amber-300/90 bg-amber-950/30 border border-amber-900/40 rounded px-2.5 py-1">
+                        <strong className="text-amber-400">💡 Segredo da Vovó:</strong>{' '}
+                        {step.criticalControlPoint}
+                      </div>
                     )}
                   </div>
-                  <p className="text-xs text-stone-300 mt-1 leading-relaxed">{step.description}</p>
-                  {step.criticalControlPoint && (
-                    <div className="mt-2 text-[11px] text-amber-300/90 bg-amber-950/30 border border-amber-900/40 rounded px-2.5 py-1">
-                      <strong className="text-amber-400">💡 Segredo da Vovó:</strong>{' '}
-                      {step.criticalControlPoint}
-                    </div>
-                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

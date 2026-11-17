@@ -193,10 +193,11 @@ export const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
 
   const smartDefaultsPicks = [
     'Pão caseiro fofinho',
+    'Pão de ló clássico',
+    'Nega maluca com calda quente',
+    'Bolo Prestígio',
     'Cuca de uva com farofinha',
     'Bolo de fubá cremoso',
-    'Cuca de banana',
-    'Pão de forma macio',
     'Quero dobrar a receita (1 kg de farinha)',
   ];
 

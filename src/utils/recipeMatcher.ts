@@ -38,7 +38,10 @@ export interface PresetMatchResult {
  * Recognizes the core homemade recipes typed in "O que você quer assar hoje?":
  * 1. "Cuca" (or "cuca de uva" / "cuca de banana") -> Cuca Alemã Caseira (500g farinha base, farofinha doce crocante + frutas)
  * 2. "Bolo de fubá" -> Bolo de Fubá Cremoso
- * 3. "Pão caseiro" -> Pão Caseiro Fofinho (500g farinha base, 2 pães médios)
+ * 3. "Pão de ló" -> Pão de Ló Clássico leve e fofinho
+ * 4. "Prestígio" -> Bolo Prestígio (massa de chocolate + recheio e cobertura cremosa de coco)
+ * 5. "Nega maluca" / "Bolo de chocolate" -> Nega Maluca com água fervendo e calda quente de chocolate
+ * 6. "Pão caseiro" -> Pão Caseiro Fofinho (500g farinha base, 2 pães médios)
  */
 export function findPresetRecipeMatch(rawQuery: string): PresetMatchResult | null {
   const q = normalizeSearchText(rawQuery);
@@ -113,7 +116,48 @@ export function findPresetRecipeMatch(rawQuery: string): PresetMatchResult | nul
     }
   }
 
-  // 2. Regra do Bolo de Fubá -> Bolo de Fubá Cremoso
+  // 2. Regra do Prestígio (antes de bolo de chocolate para não conflitar)
+  if (/\bprestigio\b/.test(q) || /\bchocolate\s+(com\s+)?coco\b/.test(q)) {
+    const basePrestigio = MASTER_RECIPES.find((r) => r.id === 'bolo-prestigio-caseiro-vovo');
+    if (basePrestigio) {
+      return {
+        recipe: cloneRecipeWithFreshIds(basePrestigio),
+        activeReformulationQuestion:
+          'Seu Bolo Prestígio da Vovó (massa de chocolate + recheio cremoso de coco com leite condensado e creme de leite) já está na bancada! Quer dobrar para uma fôrma bem grande ou fazer uma calda extra de chocolate por cima?',
+      };
+    }
+  }
+
+  // 3. Regra da Nega Maluca / Bolo de Chocolate de Liquidificador
+  if (
+    /\bnega\s*maluca\b/.test(q) ||
+    /\bbolo\s+(de\s+)?chocolate\b/.test(q) ||
+    q === 'chocolate' ||
+    q === 'bolo chocolate'
+  ) {
+    const baseNegaMaluca = MASTER_RECIPES.find((r) => r.id === 'bolo-nega-maluca-chocolate');
+    if (baseNegaMaluca) {
+      return {
+        recipe: cloneRecipeWithFreshIds(baseNegaMaluca),
+        activeReformulationQuestion:
+          'Sua Nega Maluca com água fervendo e calda quente de chocolate já está prontinha com xícaras e gramas! Quer dobrar para uma assadeira grande ou ajustar a quantidade de açúcar?',
+      };
+    }
+  }
+
+  // 4. Regra do Pão de Ló Clássico (antes de pão caseiro)
+  if (/\bpao\s+(de\s+)?lo\b/.test(q)) {
+    const basePaoDeLo = MASTER_RECIPES.find((r) => r.id === 'pao-de-lo-classico-vovo');
+    if (basePaoDeLo) {
+      return {
+        recipe: cloneRecipeWithFreshIds(basePaoDeLo),
+        activeReformulationQuestion:
+          'Seu Pão de Ló Clássico (leve, alto e fofinho para rechear) está pronto na bancada com todas as medidas! Quer dobrar para uma fôrma alta de festa ou quer sugestões de caldinha e recheio?',
+      };
+    }
+  }
+
+  // 5. Regra do Bolo de Fubá -> Bolo de Fubá Cremoso
   if (
     /\bbolo\s+(de\s+)?fuba\b/.test(q) ||
     q === 'fuba' ||
@@ -130,7 +174,7 @@ export function findPresetRecipeMatch(rawQuery: string): PresetMatchResult | nul
     }
   }
 
-  // 3. Regra do Pão Caseiro -> Pão Caseiro Fofinho (500g base, 2 pães médios)
+  // 6. Regra do Pão Caseiro -> Pão Caseiro Fofinho (500g base, 2 pães médios)
   if (
     q === 'pao' ||
     q === 'pao caseiro' ||

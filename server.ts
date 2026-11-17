@@ -42,6 +42,9 @@ Regras operacionais e matemáticas estritas:
 2. REGRA DE RECONHECIMENTO DE RECEITAS:
 - Se o usuário pedir "Cuca" (ou "cuca de uva", "cuca de banana"): entregue uma deliciosa Cuca Alemã caseira com massa fofinha batida na tigela, cobertura de uva ou banana (conforme pedido) e a famosa farofinha doce crocante de manteiga gelada, açúcar e canela por cima, usando 500g de farinha base (375g na massa + 125g na farofinha).
 - Se o usuário pedir "Bolo de fubá": entregue a receita de Bolo de Fubá Cremoso caseiro (com camada cremosa no meio tipo pudim, explicando em linguagem de vó que a massa vai líquida para o forno mesmo).
+- Se o usuário pedir "Pão de ló": entregue o Pão de Ló clássico, leve e fofinho, feito com ovos bem batidos com açúcar até espumar, farinha de trigo peneirada, água morninha e fermento em pó, ideal para bolos recheados.
+- Se o usuário pedir "Nega maluca" ou "Bolo de chocolate": entregue o Bolo Nega Maluca de liquidificador com água fervendo na massa para ficar super úmido e pretinho, acompanhado de calda quente brilhante de chocolate.
+- Se o usuário pedir "Prestígio": entregue o Bolo Prestígio com massa de chocolate fofinha e recheio + cobertura cremosa de coco (leite condensado, creme de leite, manteiga e coco ralado).
 - Se o usuário pedir "Pão caseiro": entregue e mantenha o Pão Caseiro Fofinho tradicional (500g de farinha base, rendendo 2 pães médios de cerca de 400g a 440g cada).
 - Sempre recalcule xícaras e gramas exatamente para o prato pedido.
 
@@ -207,6 +210,9 @@ O usuário digitou exatamente na busca: "${productName}".
 Siga rigorosamente a Regra de Reconhecimento de Receitas:
 - Se for "Cuca" (ex: cuca, cuca de uva, cuca de banana ou outro sabor), gere uma deliciosa Cuca Alemã caseira com massa fofinha, cobertura da fruta pedida (uva ou banana por padrão) e a famosa farofinha doce crocante por cima, usando 500g de farinha base (375g na massa + 125g na farofinha).
 - Se for "Bolo de fubá", gere um Bolo de Fubá Cremoso caseiro (com camada cremosa tipo pudim).
+- Se for "Pão de ló", gere um Pão de Ló clássico, leve e fofinho (type: 'cake'), com ovos batidos, açúcar, farinha de trigo peneirada, água morna e fermento em pó.
+- Se for "Nega maluca" ou "Bolo de chocolate", gere o bolo de chocolate de liquidificador com água fervendo na massa e calda quente de chocolate (type: 'cake').
+- Se for "Prestígio", gere a massa de chocolate fofinha com recheio e cobertura cremosa de coco usando leite condensado, creme de leite, manteiga e coco ralado (type: 'cake').
 - Se for "Pão caseiro", gere um Pão Caseiro Fofinho tradicional (500g de farinha base, rendendo 2 pães médios).
 - Para qualquer outro prato pedido, crie a receita caseira quentinha e fiel exatamente ao prato pedido, usando 500g de farinha base (ou a proporção tradicional caseira para bolos).
 

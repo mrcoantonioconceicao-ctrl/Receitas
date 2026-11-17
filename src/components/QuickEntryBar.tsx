@@ -31,6 +31,9 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
 
   const quickPicks = [
     'Pão Caseiro',
+    'Pão de Ló',
+    'Nega Maluca',
+    'Prestígio',
     'Cuca de Uva',
     'Cuca de Banana',
     'Bolo de Fubá',
@@ -110,7 +113,7 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
           </div>
         </div>
         <span className="text-[11px] text-stone-400">
-          Digite o nome (ex: "Cuca de uva", "Bolo de fubá", "Pão caseiro") para receber a receita inteira recalculada
+          Digite o nome (ex: "Pão de ló", "Nega maluca", "Prestígio", "Cuca de uva") para receber a receita inteira recalculada
         </span>
       </div>
 
@@ -128,7 +131,7 @@ export const QuickEntryBar: React.FC<QuickEntryBarProps> = ({
             type="text"
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
-            placeholder='Digite o que quer assar (ex: "Cuca", "Cuca de uva", "Bolo de fubá", "Pão caseiro")...'
+            placeholder='Digite o que quer assar (ex: "Pão de ló", "Nega maluca", "Prestígio", "Cuca", "Bolo de fubá")...'
             disabled={isLoading}
             className="w-full bg-stone-950 border border-stone-700 rounded-xl pl-9 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-stone-400 focus:outline-none focus:border-amber-500"
           />
